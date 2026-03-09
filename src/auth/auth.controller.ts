@@ -1,4 +1,13 @@
-import { Body, Controller, HttpCode, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpCode,
+  Post,
+  Get,
+  Query,
+  Req,
+} from '@nestjs/common';
+import { Request } from 'express';
 import { AuthService } from './auth.service';
 import { SignupEmailDto } from './dto/sighup-email.dto';
 
@@ -8,7 +17,19 @@ export class AuthController {
 
   @Post('/signup')
   @HttpCode(201)
-  async signup(@Body() signupEmailDto: SignupEmailDto): Promise<void> {
-    return this.authService.signup(signupEmailDto);
+  async signup(
+    @Body() signupEmailDto: SignupEmailDto,
+    @Req() req: Request,
+  ): Promise<void> {
+    const origin = req.headers.origin ?? 'https:localhost:3000';
+    return this.authService.signup(signupEmailDto, origin);
+  }
+
+  @Get('/verify')
+  async verifyEmail(
+    @Query('token') token: string,
+  ): Promise<{ message: string }> {
+    await this.authService.verifyEmail(token);
+    return { message: 'Email successfully verified' };
   }
 }

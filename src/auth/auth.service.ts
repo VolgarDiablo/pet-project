@@ -2,14 +2,19 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 import { SignupInterface } from './interfaces/signup.inetrface';
 import * as bcrypt from 'bcrypt';
+import * as jwt from 'jsonwebtoken';
+import { SignOptions } from 'jsonwebtoken';
+import { User } from '@prisma/client';
+import { EmailService } from 'src/email/email.service';
 
 @Injectable()
 export class AuthService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private emailService: EmailService,
+  ) {}
 
-  async signup(payload: SignupInterface): Promise<void> {
-    let user;
-
+  async signup(payload: SignupInterface, origin: string): Promise<void> {
     const { name, email, password, confirmPassword } = payload;
 
     const existingUser = await this.prisma.user.findUnique({
@@ -26,7 +31,7 @@ export class AuthService {
 
     const hash = await this.encryptPassword(password, 10);
 
-    user = await this.prisma.user.create({
+    const user = await this.prisma.user.create({
       data: {
         name,
         email,
@@ -34,8 +39,8 @@ export class AuthService {
       },
     });
 
-    //can send email verify
-    // await this.sendVerificationEmail(user);
+    //send email verify
+    await this.sendVerificationEmail(user, origin);
   }
 
   async encryptPassword(
@@ -43,5 +48,66 @@ export class AuthService {
     saltOrRounds: number,
   ): Promise<string> {
     return await bcrypt.hash(password, saltOrRounds);
+  }
+
+  async decryptPassword(password: string, hash: string): Promise<boolean> {
+    return bcrypt.compare(password, hash);
+  }
+
+  private async sendVerificationEmail(user: User, origin: string) {
+    const tokenEmailVerify = this.generateToken({ id: user.id });
+    const url = new URL('auth/verify', origin);
+
+    url.searchParams.set('token', tokenEmailVerify);
+
+    console.log(url.toString());
+    console.log(origin);
+
+    await this.emailService.sendEmail(
+      user.email,
+      `Привет, ${user.name}. Подтверди почту ${url.toString()}`,
+    );
+  }
+
+  generateToken(payload: object, options?: SignOptions): string {
+    return jwt.sign(payload, process.env.JWT_SECRET as string, {
+      expiresIn: '15m',
+      ...options,
+    });
+  }
+
+  async verifyEmail(token: string): Promise<void> {
+    const payload = this.verifyToken(token);
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.id },
+    });
+
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    if (user.emailVerified) {
+      throw new BadRequestException('Email already verified');
+    }
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { emailVerified: true },
+    });
+  }
+
+  verifyToken(token: string): { id: number } {
+    try {
+      return jwt.verify(token, process.env.JWT_SECRET as string) as {
+        id: number;
+      };
+    } catch {
+      throw new BadRequestException('Invalid token');
+    }
+  }
+
+  async findIdRaw(id: number) {
+    return this.prisma.user.findUnique({ where: { id } });
   }
 }
