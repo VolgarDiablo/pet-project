@@ -10,6 +10,7 @@ import {
 import { Request } from 'express';
 import { AuthService } from './auth.service';
 import { SignupEmailDto } from './dto/sighup-email.dto';
+import { LoginDto } from './dto/login.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -31,5 +32,13 @@ export class AuthController {
   ): Promise<{ message: string }> {
     await this.authService.verifyEmail(token);
     return { message: 'Email successfully verified' };
+  }
+
+  @Post('/login')
+  async login(@Body() loginDto: LoginDto, @Req() req: Request) {
+    const origin = req.headers.origin ?? 'https:localhost:3000';
+    const token = await this.authService.login(loginDto, origin);
+
+    return { token };
   }
 }

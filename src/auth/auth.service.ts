@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 import { SignupInterface } from './interfaces/signup.inetrface';
 import * as bcrypt from 'bcrypt';
@@ -6,6 +10,8 @@ import * as jwt from 'jsonwebtoken';
 import { SignOptions } from 'jsonwebtoken';
 import { User } from '@prisma/client';
 import { EmailService } from 'src/email/email.service';
+import { TokenResponse } from './interfaces/token.interface';
+import { LoginInterface } from './interfaces/login.interface';
 
 @Injectable()
 export class AuthService {
@@ -105,6 +111,41 @@ export class AuthService {
     } catch {
       throw new BadRequestException('Invalid token');
     }
+  }
+
+  async login(payload: LoginInterface, origin: string): Promise<TokenResponse> {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        email: payload.email,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+
+    const isMatchedPassword = await this.decryptPassword(
+      payload.password,
+      user.password,
+    );
+
+    if (!isMatchedPassword) {
+      throw new UnauthorizedException('Invalid password');
+    }
+
+    if (!user.emailVerified) {
+      await this.sendVerificationEmail(user, origin);
+      // throw new UnauthorizedException('Email not verified. Verification email sent');
+    }
+
+    const token = this.generateToken({ id: user.id });
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { metaData: { token } },
+    });
+
+    return { token };
   }
 
   async findIdRaw(id: number) {
