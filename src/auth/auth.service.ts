@@ -2,6 +2,8 @@ import {
   Injectable,
   BadRequestException,
   UnauthorizedException,
+  NotFoundException,
+  ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 import { SignupInterface } from './interfaces/signup.inetrface';
@@ -28,7 +30,7 @@ export class AuthService {
     });
 
     if (existingUser) {
-      throw new BadRequestException('Email already exists');
+      throw new ConflictException('User already exists');
     }
 
     if (password !== confirmPassword) {
@@ -90,11 +92,11 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new BadRequestException('User not found');
+      throw new NotFoundException('User not found');
     }
 
     if (user.emailVerified) {
-      throw new BadRequestException('Email already verified');
+      throw new ConflictException('Email already verified');
     }
 
     await this.prisma.user.update({
@@ -109,19 +111,19 @@ export class AuthService {
         id: number;
       };
     } catch {
-      throw new BadRequestException('Invalid token');
+      throw new UnauthorizedException('Invalid token');
     }
   }
 
   async login(payload: LoginInterface, origin: string): Promise<TokenResponse> {
-    const user = await this.prisma.user.findFirst({
+    const user = await this.prisma.user.findUnique({
       where: {
         email: payload.email,
       },
     });
 
     if (!user) {
-      throw new UnauthorizedException();
+      throw new UnauthorizedException('Invalid credentials');
     }
 
     const isMatchedPassword = await this.decryptPassword(
@@ -130,7 +132,7 @@ export class AuthService {
     );
 
     if (!isMatchedPassword) {
-      throw new UnauthorizedException('Invalid password');
+      throw new UnauthorizedException('Invalid credentials');
     }
 
     if (!user.emailVerified) {
