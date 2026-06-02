@@ -5,15 +5,16 @@ import {
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
-import { PrismaService } from 'src/prisma.service';
-import { SignupInterface } from './interfaces/signup.inetrface';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { SignupInterface } from './interfaces/signup.interface';
 import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
 import { SignOptions } from 'jsonwebtoken';
-import { User } from '@prisma/client';
+import { User } from '.prisma/client';
 import { EmailService } from 'src/email/email.service';
 import { TokenResponse } from './interfaces/token.interface';
 import { LoginInterface } from './interfaces/login.interface';
+import { VerifiedJwtPayload } from './types/session-user.types';
 
 @Injectable()
 export class AuthService {
@@ -105,11 +106,9 @@ export class AuthService {
     });
   }
 
-  verifyToken(token: string): { id: number } {
+  verifyToken(token: string): VerifiedJwtPayload {
     try {
-      return jwt.verify(token, process.env.JWT_SECRET as string) as {
-        id: number;
-      };
+      return jwt.verify(token, process.env.JWT_SECRET as string) as VerifiedJwtPayload;
     } catch {
       throw new UnauthorizedException('Invalid token');
     }
@@ -140,7 +139,7 @@ export class AuthService {
       // throw new UnauthorizedException('Email not verified. Verification email sent');
     }
 
-    const token = this.generateToken({ id: user.id });
+    const token = this.generateToken({ id: user.id, role: user.role });
 
     await this.prisma.user.update({
       where: { id: user.id },

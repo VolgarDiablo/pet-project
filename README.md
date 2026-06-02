@@ -1,98 +1,138 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# pet-project
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+NestJS REST API with **PostgreSQL** (Prisma), **JWT** auth, **SendGrid** email, and **role-based** route protection.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Stack
 
-## Description
+- [NestJS](https://nestjs.com/) 11
+- [Prisma](https://www.prisma.io/) 7 + `@prisma/adapter-pg`
+- PostgreSQL 16 (Docker Compose)
+- bcrypt, jsonwebtoken, class-validator
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Prerequisites
 
-## Project setup
+- Node.js 22+ (see `package.json` engines if added)
+- npm
+- Docker (optional, for local Postgres)
 
-```bash
-$ npm install
+## Environment variables
+
+Create a `.env` file in the project root:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | yes | PostgreSQL connection string, e.g. `postgresql://myuser:mypassword@localhost:5432/mydb` |
+| `JWT_SECRET` | yes | Secret for signing and verifying JWTs |
+| `SENDGRID_API_KEY` | yes for email | SendGrid API key (app fails to bootstrap `SendGridClient` if missing) |
+| `PORT` | no | HTTP port (default `3000`) |
+
+Example matching `docker-compose.yml` defaults:
+
+```env
+DATABASE_URL="postgresql://myuser:mypassword@localhost:5432/mydb"
+JWT_SECRET="change-me-in-production"
+SENDGRID_API_KEY="SG.xxx"
 ```
 
-## Compile and run the project
+## Setup
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npm install
 ```
 
-## Run tests
+Start Postgres (from project root):
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+docker compose up -d
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Apply migrations and generate the Prisma client:
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npx prisma migrate deploy
+# or during development:
+npx prisma migrate dev
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Run the app:
 
-## Resources
+```bash
+npm run start:dev
+```
 
-Check out a few resources that may come in handy when working with NestJS:
+## API overview
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/` | Health-style hello |
+| `POST` | `/auth/signup` | Register (sends verification email) |
+| `GET` | `/auth/verify?token=...` | Confirm email |
+| `POST` | `/auth/login` | Login, returns JWT (`id` + `role` in payload) |
+| `GET` | `/auth/me` | Current user from JWT (`Authorization: Bearer <token>`) |
+| `GET` | `/auth/admin/ping` | Example route restricted to `Role.ADMIN` |
 
-## Support
+## Auth guards (local `UseGuards`)
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+Guards live under `src/auth/guards/` and are **exported from `AuthModule`**. Тип запроса с пользователем: `RequestWithUser` в `src/auth/types/session-user.types.ts` (как в вашем прошлом проекте, только вместо cookie-сессии используется JWT в заголовке).
 
-## Stay in touch
+**Порядок гардов:** сначала тот, кто заполняет `req.user` (`JwtAuthGuard`), затем `RolesGuard`.
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+```typescript
+import { Get, Req, UseGuards } from '@nestjs/common';
+import { Role } from '.prisma/client';
+import type { RequestWithUser } from './auth/types/session-user.types';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { RolesGuard } from './auth/guards/roles.guard';
+import { Roles } from './auth/decorators/roles.decorator';
+
+@Get('reports')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.MANAGER, Role.ADMIN)
+getReports(@Req() req: RequestWithUser) {
+  return { userId: req.user!.id };
+}
+```
+
+| Guard | Роль |
+|--------|------|
+| **`JwtAuthGuard`** | Как **`SessionAuthGuard`** в cookie-проекте: достаёт credentials (здесь `Authorization: Bearer`), проверяет JWT, пишет в **`req.user`** `{ id, role? }`. |
+| **`RolesGuard`** | Как у вас раньше: если **`@Roles()`** не задан — пропускает; иначе без `req.user` или без `role` возвращает **403** (`false`); иначе `required.includes(user.role)`. |
+
+Токен из письма верификации содержит только `{ id }` (без `role`). Такой токен **нельзя** вешать на маршруты с `@Roles()` — для этого нужен access-токен после **`/auth/login`** (в нём есть `id` и `role`).
+
+### JWT (этот проект) vs cookie-сессия (прошлый проект)
+
+| | Сейчас (pet-project) | Прошлый проект |
+|--|----------------------|----------------|
+| Идентификация | `Authorization: Bearer` + JWT | `session_id` cookie + `SessionService` |
+| «Кто положил `req.user`» | `JwtAuthGuard` | `SessionAuthGuard` |
+| Роли на маршруте | `@UseGuards(JwtAuthGuard, RolesGuard)` + `@Roles(...)` | `@UseGuards(SessionAuthGuard, RolesGuard)` + `@Roles(...)` |
+
+Оба варианта нормальны: сессии удобнее для отзыва и HttpOnly-cookie; JWT — проще для SPA/API и мобильных клиентов без cookie.
+
+### Global guards (optional)
+
+This project does **not** register guards globally, so `/auth/signup`, `/auth/login`, and `/` stay public without extra decorators. To go global, you could register `APP_GUARD` with `JwtAuthGuard` and add a `@Public()` decorator (custom metadata) to skip JWT on selected routes.
+
+## Prisma
+
+- Schema: `prisma/schema.prisma`
+- Migrations: `prisma/migrations/`
+- Config: `prisma.config.ts`
+
+`PrismaService` is provided once via **`PrismaModule`** (`@Global()`), so feature modules only import `PrismaModule` (or rely on global availability after `AppModule` imports it).
+
+## Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `npm run start:dev` | Dev server with watch |
+| `npm run build` | Production build |
+| `npm run start:prod` | Run `dist/main` |
+| `npm run test` | Unit tests |
+| `npm run test:e2e` | E2E tests |
+| `npm run lint` | ESLint |
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+UNLICENSED (see `package.json`).
