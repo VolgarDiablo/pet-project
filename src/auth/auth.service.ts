@@ -5,13 +5,13 @@ import {
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { SignupInterface } from './interfaces/signup.interface';
 import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
 import { SignOptions } from 'jsonwebtoken';
 import { User } from '.prisma/client';
-import { EmailService } from 'src/email/email.service';
+import { EmailService } from '../email/email.service';
 import { TokenResponse } from './interfaces/token.interface';
 import { LoginInterface } from './interfaces/login.interface';
 import { VerifiedJwtPayload } from './types/session-user.types';
@@ -70,12 +70,11 @@ export class AuthService {
     url.searchParams.set('token', tokenEmailVerify);
 
     console.log(url.toString());
-    console.log(origin);
 
-    await this.emailService.sendEmail(
-      user.email,
-      `Привет, ${user.name}. Подтверди почту ${url.toString()}`,
-    );
+    // await this.emailService.sendEmail(
+    //   user.email,
+    //   `Привет, ${user.name}. Подтверди почту ${url.toString()}`,
+    // );
   }
 
   generateToken(payload: object, options?: SignOptions): string {
