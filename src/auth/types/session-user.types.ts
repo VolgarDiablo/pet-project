@@ -1,10 +1,8 @@
-import { Role } from '.prisma/client';
 import type { Request } from 'express';
 
-/** Данные из JWT после `verify` (для письма верификации в токене может быть только `id`). */
+/** Данные из JWT после `verify` (verify-письмо и access — оба с `id`). */
 export interface VerifiedJwtPayload {
   id: number;
-  role?: Role;
 }
 
 /**
@@ -13,7 +11,6 @@ export interface VerifiedJwtPayload {
  */
 export interface RequestUser {
   id: number;
-  role?: Role;
 }
 
 export interface RequestWithUser extends Request {

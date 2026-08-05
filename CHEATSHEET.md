@@ -1,6 +1,7 @@
 # Шпаргалка: pet-project (снимок на рефакторинг)
 
-> Актуально на момент начала рефакторинга. Монолит NestJS REST API (каталог + auth). Cart/Order — только в схеме БД.
+> Монолит NestJS REST API (каталог + auth). Cart/Order — только в схеме БД.  
+> **Роли (RBAC) убраны** — авторизация позже другим способом; сейчас только JWT `{ id }`.
 
 ---
 
@@ -14,7 +15,7 @@
 | Порт | `PORT` или `3000` |
 | Remote | `github.com/VolgarDiablo/pet-project` (`master`) |
 
-**Нет:** фронтенда, Redis, очередей, Dockerfile приложения, CI/CD, K8s, метрик.
+**Нет:** фронтенда, Redis, очередей, Dockerfile приложения, CI/CD, K8s, метрик, **ролей/RBAC**.
 
 ---
 
@@ -33,8 +34,8 @@ npm run start:dev
 **DATABASE_URL:** `postgresql://myuser:mypassword@localhost:5432/mydb`
 
 **Seed-юзеры (emailVerified=true):**
-- `admin@example.com` / `Admin123!` → `ADMIN`
-- `manager@example.com` / `Manager123!` → `MANAGER`
+- `admin@example.com` / `Admin123!`
+- `manager@example.com` / `Manager123!`
 
 ---
 
@@ -43,16 +44,16 @@ npm run start:dev
 ```
 AppModule
 ├── PrismaModule (@Global)     → PrismaService
-├── AuthModule                 → AuthService, JwtAuthGuard, RolesGuard (exports)
+├── AuthModule                 → AuthService, JwtAuthGuard (exports)
 │   └── EmailModule
 ├── EmailModule                ← ещё раз в AppModule (дубль импорта)
-├── CategoriesModule           → imports AuthModule (для гардов)
+├── CategoriesModule           → imports AuthModule (для JwtAuthGuard)
 └── ProductsModule             → imports AuthModule
 ```
 
 | Папка | Назначение |
 |-------|------------|
-| `src/auth/` | signup/login/verify, JWT, RBAC |
+| `src/auth/` | signup/login/verify, JWT |
 | `src/email/` | SendGrid обёртка |
 | `src/categories/` | CRUD категорий |
 | `src/products/` | каталог + soft-delete |
@@ -100,19 +101,19 @@ Category 1──* Product
 
 | Model | Ключевое |
 |-------|----------|
-| `User` | `email` unique, `password` hash, `emailVerified`, `role`, `metaData` Json? |
+| `User` | `email` unique, `password` hash, `emailVerified`, `metaData` Json? |
 | `Category` | `name` + `slug` unique |
 | `Product` | `slug` unique, `Decimal` price/discount, `stock`, **`isActive` soft-delete** |
 | `Cart` / `CartItem` | схема есть, **API нет**; unique `(cartId, productId)` |
 | `Order` / `OrderItem` | схема есть, **API нет**; `OrderStatus`, snapshot `unitPrice`/`totalPrice` |
 
 **Enums:**
-- `Role`: `CUSTOMER` \| `MANAGER` \| `ADMIN` (default CUSTOMER)
 - `OrderStatus`: `PENDING` → `CONFIRMED` → `PROCESSING` → `SHIPPED` → `DELIVERED` \| `CANCELLED`
 
 **Миграции:**
 1. `…_init` — User
-2. `…_add_catalog_and_roles` — roles, catalog, cart, orders
+2. `…_add_catalog_and_roles` — catalog, cart, orders (+ Role, later removed)
+3. `…_remove_roles` — drop `User.role` + enum `Role`
 
 ---
 
@@ -122,38 +123,34 @@ Category 1──* Product
 
 | Endpoint | Auth | Поведение |
 |----------|------|-----------|
-| `POST /auth/signup` | public | create user → JWT verify-token `{id}` → **console.log URL** (SendGrid send закомментирован) |
+| `POST /auth/signup` | public | create user → JWT verify-token `{id}` → **console.log URL** |
 | `GET /auth/verify?token=` | public | verify JWT → `emailVerified=true` |
-| `POST /auth/login` | public | bcrypt compare → JWT `{id, role}` TTL **15m** → пишет `metaData: { token }` |
-| `GET /auth/me` | JWT | `{ id, role }` из `req.user` |
-| `GET /auth/admin/ping` | JWT + ADMIN | пример RBAC |
+| `POST /auth/login` | public | bcrypt compare → JWT `{id}` TTL **10080m** → `metaData: { token }` |
+| `GET /auth/me` | JWT | `{ id }` из `req.user` |
 
 **Header:** `Authorization: Bearer <jwt>`
 
 ### Гарды (НЕ глобальные)
 
-Порядок всегда: **`JwtAuthGuard` → `RolesGuard` → `@Roles(...)`**
-
 | Guard | Делает |
 |-------|--------|
-| `JwtAuthGuard` | Bearer → `verifyToken` → `req.user = { id, role? }` |
-| `RolesGuard` | нет `@Roles` → ok; иначе `required.includes(user.role)` |
+| `JwtAuthGuard` | Bearer → `verifyToken` → `req.user = { id }` |
 
-Экспорт гардов из `AuthModule`; Products/Categories импортируют `AuthModule`.
+Экспорт из `AuthModule`; Products/Categories импортируют `AuthModule` для write-роутов.
 
 ### Важно для auth
 
-- Login payload: `{ id, role }`, TTL **10080m** (7 days).
-- Verify payload: только `{ id }`, TTL **15m** → **нельзя** на `@Roles` routes.
-- Неверифицированный юзер **всё равно логинится** (throw закомментирован; шлётся/логируется verify URL).
-- `metaData.token` сохраняется, но **гард его не сверяет** (не revoke-лист).
+- Access payload: `{ id }`, TTL **10080m** (7 days).
+- Verify payload: `{ id }`, TTL **15m**.
+- Неверифицированный юзер **всё равно логинится** (verify URL в console).
+- `metaData.token` сохраняется, но **гард его не сверяет**.
 - Origin для verify URL: `req.headers.origin ?? 'https://localhost:3000'`.
-- Login response: `{ token: string }` (без двойной обёртки).
+- Login response: `{ token: string }`.
 
 ### DTO
 
 - Signup: name≥3, email, strong password + confirmPassword
-- Login: email + strong password (те же правила силы, что signup)
+- Login: email + strong password
 
 ---
 
@@ -161,23 +158,23 @@ Category 1──* Product
 
 ### Categories `/categories`
 
-| Method | Path | Roles | Notes |
-|--------|------|-------|-------|
-| GET | `/` | public | pagination; **include все products** (без `isActive` фильтра) |
-| GET | `/:id` | public | продукты пагинированы; sort `price_asc`/`price_desc`; **без фильтра isActive** |
-| POST | `/` | ADMIN | name → auto slug |
-| PATCH | `/:id` | ADMIN | rename → новый slug |
-| DELETE | `/:id` | ADMIN | **hard delete** |
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| GET | `/` | public | pagination; **include все products** |
+| GET | `/:id` | public | продукты пагинированы; sort `price_asc`/`price_desc` |
+| POST | `/` | JWT | name → auto slug |
+| PATCH | `/:id` | JWT | rename → новый slug |
+| DELETE | `/:id` | JWT | **hard delete** |
 
 ### Products `/products`
 
-| Method | Path | Roles | Notes |
-|--------|------|-------|-------|
-| GET | `/` | public | только `isActive: true`; фильтры ниже |
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| GET | `/` | public | только `isActive: true` |
 | GET | `/:slug` | public | по slug, active only |
-| POST | `/` | ADMIN, MANAGER | auto slug from title |
-| PATCH | `/:id` | ADMIN, MANAGER | title → regenerate slug |
-| DELETE | `/:id` | ADMIN | **soft** → `isActive=false` |
+| POST | `/` | JWT | auto slug from title |
+| PATCH | `/:id` | JWT | title → regenerate slug |
+| DELETE | `/:id` | JWT | **soft** → `isActive=false` |
 
 **Query filters (`ProductQueryDto`):**
 - pagination: `page` (default 1), `limit` ∈ `{10,25,50,100}` (default 10)
@@ -220,35 +217,29 @@ Category 1──* Product
 
 ## 10. Известные странности / кандидаты на рефактор
 
-Зафиксировано как есть — удобные точки для правок:
-
-1. ~~Двойная обёртка login response~~ — **исправлено**: `{ token: string }`.
-2. ~~TTL 15m на access~~ — **исправлено**: access **10080m**, verify **15m**.
-3. **Email verify не блокирует login**; send закомментирован, но ключ SendGrid обязателен.
-4. **`metaData.token`** пишется, никем не читается при auth.
-5. **Categories list** тянет все products; **category detail** не фильтрует `isActive`.
-6. **Hard delete category** vs soft delete product — несогласованность; FK на products.
-7. **Дублирование `EmailModule`** в AppModule и AuthModule.
-8. **Нет `@nestjs/config`** — dotenv в prisma/seed/service разрозненно.
-9. Имена `encryptPassword` / `decryptPassword` = hash / compare.
-10. **Cart/Order** в схеме без модулей — либо реализовать, либо не трогать до фичи.
-11. Нет CORS/helmet/rate-limit; нет refresh tokens.
-12. Seed-пароли в репо; `.env` и `.env.test` **коммитятся** (pet-project).
-13. Unit/e2e тесты почти boilerplate (`app.controller.spec`, тонкий e2e).
+1. ~~Двойная обёртка login~~ — исправлено.
+2. ~~TTL access~~ — access **10080m**, verify **15m**.
+3. ~~RBAC / Role~~ — **удалено** (будет иначе).
+4. **Email verify не блокирует login**; SendGrid ключ обязателен при boot.
+5. **`metaData.token`** пишется, не читается гардом.
+6. **Categories list** тянет все products; detail без фильтра `isActive`.
+7. **Hard delete category** vs soft delete product.
+8. **Дублирование `EmailModule`** в AppModule и AuthModule.
+9. **Нет `@nestjs/config`**.
+10. Имена `encryptPassword` / `decryptPassword` = hash / compare.
+11. **Cart/Order** schema-only.
+12. Нет CORS/helmet/rate-limit; нет refresh tokens.
+13. Seed-пароли в репо; `.env` / `.env.test` коммитятся.
 
 ---
 
-## 11. Права по ролям (сводка)
+## 11. Доступ (без ролей)
 
-| Действие | CUSTOMER | MANAGER | ADMIN |
-|----------|:--------:|:-------:|:-----:|
-| Читать каталог | ✓ | ✓ | ✓ |
-| CRUD products (кроме delete) | | ✓ | ✓ |
-| Soft-delete product | | | ✓ |
-| CRUD categories | | | ✓ |
-| `/auth/admin/ping` | | | ✓ |
-
-Публично: signup, verify, login, GET products/categories, `GET /`.
+| Действие | Кто |
+|----------|-----|
+| Читать каталог | все |
+| Писать products/categories | любой с валидным JWT |
+| signup / verify / login / `GET /` | public |
 
 ---
 
@@ -266,16 +257,16 @@ Prisma: `npx prisma migrate dev` \| `deploy` \| `studio`
 
 ---
 
-## 13. Мини-чеклист перед рефактором
+## 13. Мини-чеклист
 
-- [ ] Не ломать контракт API без договорённости (особенно login `{ token }`)
-- [ ] Гарды: порядок Jwt → Roles; Products/Categories зависят от export AuthModule
+- [ ] Login `{ token: string }`; JWT payload только `{ id }`
+- [ ] Write-роуты: только `JwtAuthGuard`
 - [ ] Prisma Decimal / soft-delete `isActive` на Product
-- [ ] Slug уникальность через `generateUniqueSlug`
-- [ ] Pagination limits только 10/25/50/100
-- [ ] Cart/Order пока schema-only — миграции трогать осознанно
-- [ ] SendGrid обязателен при boot, пока конструктор кидает без ключа
+- [ ] Slug через `generateUniqueSlug`
+- [ ] Pagination limits 10/25/50/100
+- [ ] Cart/Order schema-only
+- [ ] SendGrid обязателен при boot
 
 ---
 
-*Файл для совместной работы. После крупных рефакторов — обновить этот снимок.*
+*После крупных рефакторов — обновить этот снимок.*

@@ -9,14 +9,11 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { Role } from '.prisma/client';
 import type { RequestWithUser } from './types/session-user.types';
 import { AuthService } from './auth.service';
 import { SignupEmailDto } from './dto/signup-email.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { RolesGuard } from './guards/roles.guard';
-import { Roles } from './decorators/roles.decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -50,14 +47,6 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   me(@Req() req: RequestWithUser) {
     const user = req.user!;
-    return { id: user.id, role: user.role };
-  }
-
-  /** Example: combine JWT + role check on any route. */
-  @Get('admin/ping')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
-  adminPing() {
-    return { ok: true };
+    return { id: user.id };
   }
 }

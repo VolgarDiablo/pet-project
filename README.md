@@ -1,6 +1,6 @@
 # pet-project
 
-NestJS REST API with **PostgreSQL** (Prisma), **JWT** auth, **SendGrid** email, and **role-based** route protection.
+NestJS REST API with **PostgreSQL** (Prisma), **JWT** auth, and **SendGrid** email.
 
 ## Stack
 
@@ -67,38 +67,31 @@ npm run start:dev
 | `GET` | `/` | Health-style hello |
 | `POST` | `/auth/signup` | Register (sends verification email) |
 | `GET` | `/auth/verify?token=...` | Confirm email |
-| `POST` | `/auth/login` | Login, returns JWT (`id` + `role` in payload) |
+| `POST` | `/auth/login` | Login, returns JWT (`{ id }` in payload) |
 | `GET` | `/auth/me` | Current user from JWT (`Authorization: Bearer <token>`) |
-| `GET` | `/auth/admin/ping` | Example route restricted to `Role.ADMIN` |
 
 ## Auth guards (local `UseGuards`)
 
-Guards live under `src/auth/guards/` and are **exported from `AuthModule`**. Тип запроса с пользователем: `RequestWithUser` в `src/auth/types/session-user.types.ts` (как в вашем прошлом проекте, только вместо cookie-сессии используется JWT в заголовке).
-
-**Порядок гардов:** сначала тот, кто заполняет `req.user` (`JwtAuthGuard`), затем `RolesGuard`.
+Guards live under `src/auth/guards/` and are **exported from `AuthModule`**. Тип запроса с пользователем: `RequestWithUser` в `src/auth/types/session-user.types.ts` (JWT в заголовке `Authorization: Bearer`).
 
 ```typescript
 import { Get, Req, UseGuards } from '@nestjs/common';
-import { Role } from '.prisma/client';
 import type { RequestWithUser } from './auth/types/session-user.types';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
-import { RolesGuard } from './auth/guards/roles.guard';
-import { Roles } from './auth/decorators/roles.decorator';
 
-@Get('reports')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.MANAGER, Role.ADMIN)
-getReports(@Req() req: RequestWithUser) {
+@Get('profile')
+@UseGuards(JwtAuthGuard)
+getProfile(@Req() req: RequestWithUser) {
   return { userId: req.user!.id };
 }
 ```
 
 | Guard | Роль |
 |--------|------|
-| **`JwtAuthGuard`** | Как **`SessionAuthGuard`** в cookie-проекте: достаёт credentials (здесь `Authorization: Bearer`), проверяет JWT, пишет в **`req.user`** `{ id, role? }`. |
-| **`RolesGuard`** | Как у вас раньше: если **`@Roles()`** не задан — пропускает; иначе без `req.user` или без `role` возвращает **403** (`false`); иначе `required.includes(user.role)`. |
+| **`JwtAuthGuard`** | Достаёт `Authorization: Bearer`, проверяет JWT, пишет в **`req.user`** `{ id }`. |
 
-Токен из письма верификации содержит только `{ id }` (без `role`). Такой токен **нельзя** вешать на маршруты с `@Roles()` — для этого нужен access-токен после **`/auth/login`** (в нём есть `id` и `role`).
+Access JWT (login): TTL **10080m** (7 days), payload `{ id }`.  
+Verify JWT (email): TTL **15m**, payload `{ id }`.
 
 ### JWT (этот проект) vs cookie-сессия (прошлый проект)
 
@@ -106,7 +99,6 @@ getReports(@Req() req: RequestWithUser) {
 |--|----------------------|----------------|
 | Идентификация | `Authorization: Bearer` + JWT | `session_id` cookie + `SessionService` |
 | «Кто положил `req.user`» | `JwtAuthGuard` | `SessionAuthGuard` |
-| Роли на маршруте | `@UseGuards(JwtAuthGuard, RolesGuard)` + `@Roles(...)` | `@UseGuards(SessionAuthGuard, RolesGuard)` + `@Roles(...)` |
 
 Оба варианта нормальны: сессии удобнее для отзыва и HttpOnly-cookie; JWT — проще для SPA/API и мобильных клиентов без cookie.
 

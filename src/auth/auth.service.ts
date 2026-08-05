@@ -133,10 +133,7 @@ export class AuthService {
       await this.sendVerificationEmail(user, origin);
     }
 
-    const token = this.generateToken(
-      { id: user.id, role: user.role },
-      { expiresIn: '10080m' },
-    );
+    const token = this.generateToken({ id: user.id }, { expiresIn: '10080m' });
 
     await this.prisma.user.update({
       where: { id: user.id },

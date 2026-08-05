@@ -1,4 +1,4 @@
-import { PrismaClient, Role } from '.prisma/client';
+import { PrismaClient } from '.prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import * as bcrypt from 'bcrypt';
 import * as dotenv from 'dotenv';
@@ -93,13 +93,11 @@ const users = [
     name: 'Admin',
     email: 'admin@example.com',
     password: 'Admin123!',
-    role: Role.ADMIN,
   },
   {
     name: 'Manager',
     email: 'manager@example.com',
     password: 'Manager123!',
-    role: Role.MANAGER,
   },
 ];
 
@@ -143,17 +141,16 @@ async function main() {
     });
   }
 
-  console.log('Seeding users (admin/manager)...');
+  console.log('Seeding users...');
   for (const u of users) {
     const hash = await bcrypt.hash(u.password, 10);
     await prisma.user.upsert({
       where: { email: u.email },
-      update: { role: u.role, emailVerified: true },
+      update: { emailVerified: true },
       create: {
         name: u.name,
         email: u.email,
         password: hash,
-        role: u.role,
         emailVerified: true,
       },
     });
