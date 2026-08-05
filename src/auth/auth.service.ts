@@ -7,14 +7,13 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SignupInterface } from './interfaces/signup.interface';
-import * as bcrypt from 'bcrypt';
-import * as jwt from 'jsonwebtoken';
-import { SignOptions } from 'jsonwebtoken';
 import { User } from '@prisma/client';
 import { EmailService } from '../email/email.service';
 import { TokenResponse } from './interfaces/token.interface';
 import { LoginInterface } from './interfaces/login.interface';
-import { VerifiedJwtPayload } from './types/session-user.types';
+import { generateToken, verifyToken } from './utils/jwt.util';
+import { hashPassword, comparePassword } from './utils/password.util';
+import { buildVerificationUrl } from './utils/verification-url.util';
 
 @Injectable()
 export class AuthService {
@@ -38,7 +37,7 @@ export class AuthService {
       throw new BadRequestException('Passwords do not match');
     }
 
-    const hash = await this.encryptPassword(password, 10);
+    const hash = await hashPassword(password, 10);
 
     const user = await this.prisma.user.create({
       data: {
@@ -51,37 +50,15 @@ export class AuthService {
     await this.sendVerificationEmail(user, origin);
   }
 
-  async encryptPassword(
-    password: string,
-    saltOrRounds: number,
-  ): Promise<string> {
-    return await bcrypt.hash(password, saltOrRounds);
-  }
-
-  async decryptPassword(password: string, hash: string): Promise<boolean> {
-    return bcrypt.compare(password, hash);
-  }
-
   private async sendVerificationEmail(user: User, origin: string) {
-    const tokenEmailVerify = this.generateToken({ id: user.id }, {
+    const tokenEmailVerify = generateToken({ id: user.id }, {
       expiresIn: '15m',
     });
-    const url = new URL('auth/verify', origin);
-
-    url.searchParams.set('token', tokenEmailVerify);
-
-    console.log(url.toString());
-  }
-
-  generateToken(payload: object, options?: SignOptions): string {
-    return jwt.sign(payload, process.env.JWT_SECRET as string, {
-      expiresIn: '15m',
-      ...options,
-    });
+    console.log(buildVerificationUrl(origin, tokenEmailVerify));
   }
 
   async verifyEmail(token: string): Promise<void> {
-    const payload = this.verifyToken(token);
+    const payload = verifyToken(token);
 
     const user = await this.prisma.user.findUnique({
       where: { id: payload.id },
@@ -101,14 +78,6 @@ export class AuthService {
     });
   }
 
-  verifyToken(token: string): VerifiedJwtPayload {
-    try {
-      return jwt.verify(token, process.env.JWT_SECRET as string) as VerifiedJwtPayload;
-    } catch {
-      throw new UnauthorizedException('Invalid token');
-    }
-  }
-
   async login(payload: LoginInterface, origin: string): Promise<TokenResponse> {
     const user = await this.prisma.user.findUnique({
       where: {
@@ -120,7 +89,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const isMatchedPassword = await this.decryptPassword(
+    const isMatchedPassword = await comparePassword(
       payload.password,
       user.password,
     );
@@ -133,7 +102,7 @@ export class AuthService {
       await this.sendVerificationEmail(user, origin);
     }
 
-    const token = this.generateToken({ id: user.id }, { expiresIn: '10080m' });
+    const token = generateToken({ id: user.id }, { expiresIn: '10080m' });
 
     await this.prisma.user.update({
       where: { id: user.id },

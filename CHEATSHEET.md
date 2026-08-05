@@ -53,13 +53,16 @@ AppModule
 
 | Папка | Назначение |
 |-------|------------|
-| `src/auth/` | signup/login/verify, JWT |
+| `src/auth/` | signup/login/verify, JWT; utils: jwt/password/bearer/verify-url |
 | `src/email/` | SendGrid обёртка |
 | `src/categories/` | CRUD категорий |
 | `src/products/` | каталог + soft-delete |
 | `src/prisma/` | глобальный Prisma + pg adapter |
 | `src/common/` | pagination DTO/util, slug util |
 | `prisma/` | schema, migrations, seed |
+
+**Auth utils (`src/auth/utils/`):** `jwt.util`, `password.util`, `bearer-token.util`, `verification-url.util`  
+**Common utils:** `slug.util`, `pagination.util`
 
 **Паттерн фичи:** `*.module.ts` → `*.controller.ts` → `*.service.ts` → `dto/` + `interfaces/`  
 **DTO только в контроллерах** (валидация). Сервисы принимают `interfaces` / `types`. DTO `implements` интерфейс.
