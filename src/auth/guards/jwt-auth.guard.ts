@@ -7,10 +7,6 @@ import {
 import { AuthService } from '../auth.service';
 import type { RequestWithUser } from '../types/session-user.types';
 
-/**
- * Аналог `SessionAuthGuard` из cookie-сессии: здесь идентичность берётся из
- * `Authorization: Bearer <jwt>` и кладётся в `req.user`.
- */
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(private readonly authService: AuthService) {}

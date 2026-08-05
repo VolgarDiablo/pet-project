@@ -21,7 +21,6 @@ export class ProductQueryDto extends PaginationDto {
   @IsInt()
   categoryId?: number;
 
-  /** Фильтр по slug категории (альтернатива categoryId). */
   @IsOptional()
   @IsString()
   categorySlug?: string;
