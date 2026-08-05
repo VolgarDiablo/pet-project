@@ -43,9 +43,7 @@ export class AuthController {
   @Post('/login')
   async login(@Body() loginDto: LoginDto, @Req() req: Request) {
     const origin = req.headers.origin ?? 'https://localhost:3000';
-    const token = await this.authService.login(loginDto, origin);
-
-    return { token };
+    return this.authService.login(loginDto, origin);
   }
 
   @Get('me')
