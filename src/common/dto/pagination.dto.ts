@@ -1,9 +1,10 @@
 import { Transform, Type } from 'class-transformer';
 import { IsIn, IsInt, IsOptional, Min } from 'class-validator';
+import { Pagination } from '../interfaces/pagination.interface';
 
 export const ALLOWED_LIMITS = [10, 25, 50, 100] as const;
 
-export class PaginationDto {
+export class PaginationDto implements Pagination {
   @IsOptional()
   @Transform(({ value }) => {
     if (value === undefined || value === null || value === '') {

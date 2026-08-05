@@ -5,14 +5,15 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '.prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { PaginationDto } from '../common/dto/pagination.dto';
-import { CategoryQueryDto, ProductSort } from './dto/category-query.dto';
-import { CreateCategoryDto } from './dto/create-category.dto';
-import { UpdateCategoryDto } from './dto/update-category.dto';
+import { Pagination } from '../common/interfaces/pagination.interface';
 import { PaginatedResult } from '../common/interfaces/paginated-result.interface';
 import {
+  CategoryQuery,
   CategoryWithPaginatedProducts,
   CategoryWithProducts,
+  CreateCategory,
+  ProductSort,
+  UpdateCategory,
 } from './interfaces/category.interface';
 import {
   buildPaginatedResult,
@@ -25,7 +26,7 @@ export class CategoriesService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(
-    pagination: PaginationDto,
+    pagination: Pagination,
   ): Promise<PaginatedResult<CategoryWithProducts>> {
     const { page, limit } = pagination;
 
@@ -44,7 +45,7 @@ export class CategoriesService {
 
   async findOne(
     id: number,
-    query: CategoryQueryDto,
+    query: CategoryQuery,
   ): Promise<CategoryWithPaginatedProducts> {
     const { page, limit, sort } = query;
 
@@ -71,31 +72,31 @@ export class CategoriesService {
     };
   }
 
-  async create(dto: CreateCategoryDto): Promise<CategoryWithProducts> {
-    const slug = await generateUniqueSlug(dto.name, (value) =>
+  async create(payload: CreateCategory): Promise<CategoryWithProducts> {
+    const slug = await generateUniqueSlug(payload.name, (value) =>
       this.slugExists(value),
     );
 
     try {
       return await this.prisma.category.create({
-        data: { name: dto.name, slug },
+        data: { name: payload.name, slug },
         include: { products: true },
       });
     } catch (error) {
-      throw this.handleWriteError(error, dto.name);
+      throw this.handleWriteError(error, payload.name);
     }
   }
 
   async update(
     id: number,
-    dto: UpdateCategoryDto,
+    payload: UpdateCategory,
   ): Promise<CategoryWithProducts> {
     await this.ensureExists(id);
 
     const data: Prisma.CategoryUpdateInput = {};
-    if (dto.name !== undefined) {
-      data.name = dto.name;
-      data.slug = await generateUniqueSlug(dto.name, (value) =>
+    if (payload.name !== undefined) {
+      data.name = payload.name;
+      data.slug = await generateUniqueSlug(payload.name, (value) =>
         this.slugExists(value, id),
       );
     }
@@ -107,7 +108,7 @@ export class CategoriesService {
         include: { products: true },
       });
     } catch (error) {
-      throw this.handleWriteError(error, dto.name);
+      throw this.handleWriteError(error, payload.name);
     }
   }
 

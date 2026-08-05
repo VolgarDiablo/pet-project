@@ -5,13 +5,13 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '.prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateProductDto } from './dto/create-product.dto';
-import { UpdateProductDto } from './dto/update-product.dto';
 import {
+  CreateProduct,
   ProductListSort,
-  ProductQueryDto,
-} from './dto/product-query.dto';
-import { ProductWithCategory } from './interfaces/product.interface';
+  ProductQuery,
+  ProductWithCategory,
+  UpdateProduct,
+} from './interfaces/product.interface';
 import { generateUniqueSlug } from '../common/utils/slug.util';
 import { PaginatedResult } from '../common/interfaces/paginated-result.interface';
 import { buildPaginatedResult, getSkip } from '../common/utils/pagination.util';
@@ -21,7 +21,7 @@ export class ProductsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(
-    query: ProductQueryDto,
+    query: ProductQuery,
   ): Promise<PaginatedResult<ProductWithCategory>> {
     const { page, limit } = query;
 
@@ -89,23 +89,23 @@ export class ProductsService {
     return product;
   }
 
-  async create(dto: CreateProductDto): Promise<ProductWithCategory> {
-    await this.ensureCategoryExists(dto.categoryId);
+  async create(payload: CreateProduct): Promise<ProductWithCategory> {
+    await this.ensureCategoryExists(payload.categoryId);
 
-    const slug = await generateUniqueSlug(dto.title, (value) =>
+    const slug = await generateUniqueSlug(payload.title, (value) =>
       this.slugExists(value),
     );
 
     return this.prisma.product.create({
       data: {
-        title: dto.title,
+        title: payload.title,
         slug,
-        description: dto.description,
-        brand: dto.brand,
-        price: dto.price,
-        discountPrice: dto.discountPrice,
-        stock: dto.stock,
-        categoryId: dto.categoryId,
+        description: payload.description,
+        brand: payload.brand,
+        price: payload.price,
+        discountPrice: payload.discountPrice,
+        stock: payload.stock,
+        categoryId: payload.categoryId,
       },
       include: { category: true },
     });
@@ -113,34 +113,34 @@ export class ProductsService {
 
   async update(
     id: number,
-    dto: UpdateProductDto,
+    payload: UpdateProduct,
   ): Promise<ProductWithCategory> {
     await this.ensureExists(id);
 
-    if (dto.categoryId !== undefined) {
-      await this.ensureCategoryExists(dto.categoryId);
+    if (payload.categoryId !== undefined) {
+      await this.ensureCategoryExists(payload.categoryId);
     }
 
     const data: Prisma.ProductUpdateInput = {
-      description: dto.description,
-      brand: dto.brand,
-      price: dto.price,
-      discountPrice: dto.discountPrice,
-      stock: dto.stock,
+      description: payload.description,
+      brand: payload.brand,
+      price: payload.price,
+      discountPrice: payload.discountPrice,
+      stock: payload.stock,
     };
 
-    if (dto.title !== undefined) {
-      data.title = dto.title;
-      data.slug = await generateUniqueSlug(dto.title, (value) =>
+    if (payload.title !== undefined) {
+      data.title = payload.title;
+      data.slug = await generateUniqueSlug(payload.title, (value) =>
         this.slugExists(value, id),
       );
     }
 
-    if (dto.categoryId !== undefined) {
+    if (payload.categoryId !== undefined) {
       data.category =
-        dto.categoryId === null
+        payload.categoryId === null
           ? { disconnect: true }
-          : { connect: { id: dto.categoryId } };
+          : { connect: { id: payload.categoryId } };
     }
 
     return this.prisma.product.update({
@@ -187,7 +187,9 @@ export class ProductsService {
     }
   }
 
-  private async ensureCategoryExists(categoryId?: number): Promise<void> {
+  private async ensureCategoryExists(
+    categoryId?: number | null,
+  ): Promise<void> {
     if (categoryId === undefined || categoryId === null) {
       return;
     }

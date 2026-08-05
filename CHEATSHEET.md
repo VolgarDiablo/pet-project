@@ -61,7 +61,8 @@ AppModule
 | `src/common/` | pagination DTO/util, slug util |
 | `prisma/` | schema, migrations, seed |
 
-**Паттерн фичи:** `*.module.ts` → `*.controller.ts` → `*.service.ts` → `dto/` + `interfaces/`
+**Паттерн фичи:** `*.module.ts` → `*.controller.ts` → `*.service.ts` → `dto/` + `interfaces/`  
+**DTO только в контроллерах** (валидация). Сервисы принимают `interfaces` / `types`. DTO `implements` интерфейс.
 
 ---
 

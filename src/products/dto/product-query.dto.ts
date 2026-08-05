@@ -8,14 +8,14 @@ import {
   Min,
 } from 'class-validator';
 import { PaginationDto } from '../../common/dto/pagination.dto';
+import {
+  ProductListSort,
+  ProductQuery,
+} from '../interfaces/product.interface';
 
-export enum ProductListSort {
-  PRICE_ASC = 'price_asc',
-  PRICE_DESC = 'price_desc',
-  NEWEST = 'newest',
-}
+export { ProductListSort };
 
-export class ProductQueryDto extends PaginationDto {
+export class ProductQueryDto extends PaginationDto implements ProductQuery {
   @IsOptional()
   @Type(() => Number)
   @IsInt()

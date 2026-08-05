@@ -5,8 +5,9 @@ import {
   IsStrongPassword,
   MinLength,
 } from 'class-validator';
+import { SignupInterface } from '../interfaces/signup.interface';
 
-export class SignupEmailDto {
+export class SignupEmailDto implements SignupInterface {
   @IsNotEmpty()
   @IsString()
   @MinLength(3)
