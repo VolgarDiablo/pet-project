@@ -87,7 +87,7 @@ AppModule
 
 Файлы: `.env` (dev) и `.env.test` (тесты) — **в git**. Override'ы `*.local` — игнорируются.
 
-**Prisma client import:** `.prisma/client` (output в `node_modules/.prisma/client`)  
+**Prisma client import:** `@prisma/client`  
 **Prisma config:** `prisma.config.ts` (url из env)
 
 ---

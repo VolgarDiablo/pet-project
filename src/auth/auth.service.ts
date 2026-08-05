@@ -10,7 +10,7 @@ import { SignupInterface } from './interfaces/signup.interface';
 import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
 import { SignOptions } from 'jsonwebtoken';
-import { User } from '.prisma/client';
+import { User } from '@prisma/client';
 import { EmailService } from '../email/email.service';
 import { TokenResponse } from './interfaces/token.interface';
 import { LoginInterface } from './interfaces/login.interface';

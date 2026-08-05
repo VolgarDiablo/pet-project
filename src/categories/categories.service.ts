@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '.prisma/client';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { Pagination } from '../common/interfaces/pagination.interface';
 import { PaginatedResult } from '../common/interfaces/paginated-result.interface';

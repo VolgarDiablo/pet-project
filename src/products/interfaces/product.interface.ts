@@ -1,4 +1,4 @@
-import { Category, Product } from '.prisma/client';
+import { Category, Product } from '@prisma/client';
 import { Pagination } from '../../common/interfaces/pagination.interface';
 
 export type ProductWithCategory = Product & {

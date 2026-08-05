@@ -1,4 +1,4 @@
-import { Category, Product } from '.prisma/client';
+import { Category, Product } from '@prisma/client';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
 import { Pagination } from '../../common/interfaces/pagination.interface';
 
