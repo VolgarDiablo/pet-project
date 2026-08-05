@@ -4,7 +4,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateProduct,
   ProductListSort,
@@ -15,10 +14,15 @@ import {
 import { generateUniqueSlug } from '../common/utils/slug.util';
 import { PaginatedResult } from '../common/interfaces/paginated-result.interface';
 import { buildPaginatedResult, getSkip } from '../common/utils/pagination.util';
+import { ProductsDataService } from './products.data.service';
+import { CategoriesDataService } from '../categories/categories.data.service';
 
 @Injectable()
 export class ProductsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly productsData: ProductsDataService,
+    private readonly categoriesData: CategoriesDataService,
+  ) {}
 
   async findAll(
     query: ProductQuery,
@@ -36,10 +40,9 @@ export class ProductsService {
     }
 
     if (hasSlug) {
-      const category = await this.prisma.category.findUnique({
-        where: { slug: query.categorySlug!.trim() },
-        select: { id: true },
-      });
+      const category = await this.categoriesData.findIdBySlug(
+        query.categorySlug!.trim(),
+      );
       if (!category) {
         throw new NotFoundException(
           `Category with slug "${query.categorySlug}" not found`,
@@ -62,25 +65,18 @@ export class ProductsService {
       };
     }
 
-    const [data, total] = await Promise.all([
-      this.prisma.product.findMany({
-        where,
-        skip: getSkip(page, limit),
-        take: limit,
-        orderBy: this.resolveOrder(query.sort),
-        include: { category: true },
-      }),
-      this.prisma.product.count({ where }),
-    ]);
+    const [data, total] = await this.productsData.find(
+      where,
+      getSkip(page, limit),
+      limit,
+      this.resolveOrder(query.sort),
+    );
 
     return buildPaginatedResult(data, total, page, limit);
   }
 
   async findBySlug(slug: string): Promise<ProductWithCategory> {
-    const product = await this.prisma.product.findFirst({
-      where: { slug, isActive: true },
-      include: { category: true },
-    });
+    const product = await this.productsData.findActiveBySlug(slug);
 
     if (!product) {
       throw new NotFoundException(`Product "${slug}" not found`);
@@ -96,18 +92,17 @@ export class ProductsService {
       this.slugExists(value),
     );
 
-    return this.prisma.product.create({
-      data: {
-        title: payload.title,
-        slug,
-        description: payload.description,
-        brand: payload.brand,
-        price: payload.price,
-        discountPrice: payload.discountPrice,
-        stock: payload.stock,
-        categoryId: payload.categoryId,
-      },
-      include: { category: true },
+    return this.productsData.create({
+      title: payload.title,
+      slug,
+      description: payload.description,
+      brand: payload.brand,
+      price: payload.price,
+      discountPrice: payload.discountPrice,
+      stock: payload.stock,
+      ...(payload.categoryId !== undefined
+        ? { category: { connect: { id: payload.categoryId } } }
+        : {}),
     });
   }
 
@@ -143,23 +138,14 @@ export class ProductsService {
           : { connect: { id: payload.categoryId } };
     }
 
-    return this.prisma.product.update({
-      where: { id },
-      data,
-      include: { category: true },
-    });
+    return this.productsData.update(id, data);
   }
 
   async softDelete(
     id: number,
   ): Promise<{ id: number; isActive: boolean }> {
     await this.ensureExists(id);
-    const product = await this.prisma.product.update({
-      where: { id },
-      data: { isActive: false },
-      select: { id: true, isActive: true },
-    });
-    return product;
+    return this.productsData.softDelete(id);
   }
 
   private resolveOrder(
@@ -178,10 +164,7 @@ export class ProductsService {
   }
 
   private async ensureExists(id: number): Promise<void> {
-    const exists = await this.prisma.product.findUnique({
-      where: { id },
-      select: { id: true },
-    });
+    const exists = await this.productsData.findIdOnly(id);
     if (!exists) {
       throw new NotFoundException(`Product ${id} not found`);
     }
@@ -193,20 +176,14 @@ export class ProductsService {
     if (categoryId === undefined || categoryId === null) {
       return;
     }
-    const category = await this.prisma.category.findUnique({
-      where: { id: categoryId },
-      select: { id: true },
-    });
+    const category = await this.categoriesData.findIdOnly(categoryId);
     if (!category) {
       throw new BadRequestException(`Category ${categoryId} does not exist`);
     }
   }
 
   private async slugExists(slug: string, ignoreId?: number): Promise<boolean> {
-    const found = await this.prisma.product.findUnique({
-      where: { slug },
-      select: { id: true },
-    });
+    const found = await this.productsData.findIdBySlug(slug);
     return !!found && found.id !== ignoreId;
   }
 }

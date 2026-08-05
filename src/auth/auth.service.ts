@@ -5,29 +5,27 @@ import {
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { SignupInterface } from './interfaces/signup.interface';
 import { User } from '@prisma/client';
 import { EmailService } from '../email/email.service';
+import { SignupInterface } from './interfaces/signup.interface';
 import { TokenResponse } from './interfaces/token.interface';
 import { LoginInterface } from './interfaces/login.interface';
 import { generateToken, verifyToken } from './utils/jwt.util';
 import { hashPassword, comparePassword } from './utils/password.util';
 import { buildVerificationUrl } from './utils/verification-url.util';
+import { UsersDataService } from './users.data.service';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private prisma: PrismaService,
-    private emailService: EmailService,
+    private readonly usersData: UsersDataService,
+    private readonly emailService: EmailService,
   ) {}
 
   async signup(payload: SignupInterface, origin: string): Promise<void> {
     const { name, email, password, confirmPassword } = payload;
 
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email },
-    });
+    const existingUser = await this.usersData.findByEmail(email);
 
     if (existingUser) {
       throw new ConflictException('User already exists');
@@ -39,12 +37,10 @@ export class AuthService {
 
     const hash = await hashPassword(password, 10);
 
-    const user = await this.prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hash,
-      },
+    const user = await this.usersData.create({
+      name,
+      email,
+      password: hash,
     });
 
     await this.sendVerificationEmail(user, origin);
@@ -60,9 +56,7 @@ export class AuthService {
   async verifyEmail(token: string): Promise<void> {
     const payload = verifyToken(token);
 
-    const user = await this.prisma.user.findUnique({
-      where: { id: payload.id },
-    });
+    const user = await this.usersData.findById(payload.id);
 
     if (!user) {
       throw new NotFoundException('User not found');
@@ -72,18 +66,11 @@ export class AuthService {
       throw new ConflictException('Email already verified');
     }
 
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: { emailVerified: true },
-    });
+    await this.usersData.update(user.id, { emailVerified: true });
   }
 
   async login(payload: LoginInterface, origin: string): Promise<TokenResponse> {
-    const user = await this.prisma.user.findUnique({
-      where: {
-        email: payload.email,
-      },
-    });
+    const user = await this.usersData.findByEmail(payload.email);
 
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
@@ -104,15 +91,12 @@ export class AuthService {
 
     const token = generateToken({ id: user.id }, { expiresIn: '10080m' });
 
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: { metaData: { token } },
-    });
+    await this.usersData.update(user.id, { metaData: { token } });
 
     return { token };
   }
 
   async findIdRaw(id: number) {
-    return this.prisma.user.findUnique({ where: { id } });
+    return this.usersData.findById(id);
   }
 }

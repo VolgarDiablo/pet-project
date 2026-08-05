@@ -64,8 +64,8 @@ AppModule
 **Auth utils (`src/auth/utils/`):** `jwt.util`, `password.util`, `bearer-token.util`, `verification-url.util`  
 **Common utils:** `slug.util`, `pagination.util`
 
-**Паттерн фичи:** `*.module.ts` → `*.controller.ts` → `*.service.ts` → `dto/` + `interfaces/`  
-**DTO только в контроллерах** (валидация). Сервисы принимают `interfaces` / `types`. DTO `implements` интерфейс.
+**Паттерн фичи:** controller → service (бизнес) → `*.data.service` (Prisma) → dto + interfaces  
+**DTO только в контроллерах.** Data-слой: `categories.data.service`, `products.data.service`, `users.data.service`.
 
 ---
 
