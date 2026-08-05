@@ -48,7 +48,6 @@ export class AuthService {
       },
     });
 
-    //send email verify
     await this.sendVerificationEmail(user, origin);
   }
 
@@ -64,17 +63,14 @@ export class AuthService {
   }
 
   private async sendVerificationEmail(user: User, origin: string) {
-    const tokenEmailVerify = this.generateToken({ id: user.id });
+    const tokenEmailVerify = this.generateToken({ id: user.id }, {
+      expiresIn: '15m',
+    });
     const url = new URL('auth/verify', origin);
 
     url.searchParams.set('token', tokenEmailVerify);
 
     console.log(url.toString());
-
-    // await this.emailService.sendEmail(
-    //   user.email,
-    //   `Привет, ${user.name}. Подтверди почту ${url.toString()}`,
-    // );
   }
 
   generateToken(payload: object, options?: SignOptions): string {
@@ -135,10 +131,12 @@ export class AuthService {
 
     if (!user.emailVerified) {
       await this.sendVerificationEmail(user, origin);
-      // throw new UnauthorizedException('Email not verified. Verification email sent');
     }
 
-    const token = this.generateToken({ id: user.id, role: user.role });
+    const token = this.generateToken(
+      { id: user.id, role: user.role },
+      { expiresIn: '10080m' },
+    );
 
     await this.prisma.user.update({
       where: { id: user.id },
