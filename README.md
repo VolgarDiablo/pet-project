@@ -17,7 +17,7 @@ NestJS REST API with **PostgreSQL** (Prisma), **JWT** auth, **SendGrid** email, 
 
 ## Environment variables
 
-Create a `.env` file in the project root:
+Create a `.env` file in the project root (committed in this repo; also `.env.test` for tests):
 
 | Variable | Required | Description |
 |----------|----------|-------------|
@@ -26,7 +26,7 @@ Create a `.env` file in the project root:
 | `SENDGRID_API_KEY` | yes for email | SendGrid API key (app fails to bootstrap `SendGridClient` if missing) |
 | `PORT` | no | HTTP port (default `3000`) |
 
-Example matching `docker-compose.yml` defaults:
+Example matching `docker-compose.yml` defaults (same as root `.env`):
 
 ```env
 DATABASE_URL="postgresql://myuser:mypassword@localhost:5432/mydb"

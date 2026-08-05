@@ -35,8 +35,8 @@ lerna-debug.log*
 !.vscode/launch.json
 !.vscode/extensions.json
 
-# dotenv environment variable files
-.env
+# dotenv — keep shared .env / .env.test in git (pet-project);
+# ignore only machine-specific overrides
 .env.development.local
 .env.test.local
 .env.production.local
