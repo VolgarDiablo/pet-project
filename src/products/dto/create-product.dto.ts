@@ -8,8 +8,9 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
+import { CreateProduct } from '../interfaces/product.interface';
 
-export class CreateProductDto {
+export class CreateProductDto implements CreateProduct {
   @IsString()
   @IsNotEmpty()
   @MinLength(2)

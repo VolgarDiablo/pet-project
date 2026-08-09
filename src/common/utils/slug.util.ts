@@ -6,7 +6,6 @@ const CYRILLIC_MAP: Record<string, string> = {
   я: 'ya',
 };
 
-/** Превращает произвольную строку (в т.ч. кириллицу) в URL-safe slug. */
 export function slugify(input: string): string {
   return input
     .toLowerCase()
@@ -18,10 +17,6 @@ export function slugify(input: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
-/**
- * Гарантирует уникальность slug: если базовый уже занят,
- * добавляет суффикс -2, -3, ... используя переданный проверщик.
- */
 export async function generateUniqueSlug(
   source: string,
   exists: (slug: string) => Promise<boolean>,
