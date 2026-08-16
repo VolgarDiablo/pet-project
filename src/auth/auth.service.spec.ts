@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
 import { UsersDataService } from './users.data.service';
-import { EmailService } from '../email/email.service';
+import { MailService } from '../mail/mail.service';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -11,7 +11,7 @@ describe('AuthService', () => {
       providers: [
         AuthService,
         { provide: UsersDataService, useValue: {} },
-        { provide: EmailService, useValue: { sendEmail: jest.fn() } },
+        { provide: MailService, useValue: { sendVeryfiedEmail: jest.fn() } },
       ],
     }).compile();
 

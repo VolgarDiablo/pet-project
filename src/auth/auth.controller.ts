@@ -25,7 +25,7 @@ export class AuthController {
     @Body() signupEmailDto: SignupEmailDto,
     @Req() req: Request,
   ): Promise<void> {
-    const origin = req.headers.origin ?? 'https://localhost:3000';
+    const origin = req.headers.origin ?? 'http://localhost:3000';
     return this.authService.signup(signupEmailDto, origin);
   }
 
@@ -39,7 +39,7 @@ export class AuthController {
 
   @Post('/login')
   async login(@Body() loginDto: LoginDto, @Req() req: Request) {
-    const origin = req.headers.origin ?? 'https://localhost:3000';
+    const origin = req.headers.origin ?? 'http://localhost:3000';
     return this.authService.login(loginDto, origin);
   }
 

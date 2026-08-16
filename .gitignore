@@ -2,6 +2,7 @@
 /dist
 /node_modules
 /build
+*.tsbuildinfo
 
 # Logs
 logs
@@ -35,8 +36,8 @@ lerna-debug.log*
 !.vscode/launch.json
 !.vscode/extensions.json
 
-# dotenv — keep shared .env / .env.test in git (pet-project);
-# ignore only machine-specific overrides
+# secrets — never commit real credentials
+.env
 .env.development.local
 .env.test.local
 .env.production.local

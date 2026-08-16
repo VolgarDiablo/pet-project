@@ -5,8 +5,7 @@ import {
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
-import { User } from '@prisma/client';
-import { EmailService } from '../email/email.service';
+import { MailService } from '../mail/mail.service';
 import { SignupInterface } from './interfaces/signup.interface';
 import { TokenResponse } from './interfaces/token.interface';
 import { LoginInterface } from './interfaces/login.interface';
@@ -19,7 +18,7 @@ import { UsersDataService } from './users.data.service';
 export class AuthService {
   constructor(
     private readonly usersData: UsersDataService,
-    private readonly emailService: EmailService,
+    private readonly mailService: MailService,
   ) {}
 
   async signup(payload: SignupInterface, origin: string): Promise<void> {
@@ -46,11 +45,15 @@ export class AuthService {
     await this.sendVerificationEmail(user, origin);
   }
 
-  private async sendVerificationEmail(user: User, origin: string) {
+  private async sendVerificationEmail(
+    user: { id: number; email: string; name: string },
+    origin: string,
+  ) {
     const tokenEmailVerify = generateToken({ id: user.id }, {
       expiresIn: '15m',
     });
-    console.log(buildVerificationUrl(origin, tokenEmailVerify));
+    const url = buildVerificationUrl(origin, tokenEmailVerify);
+    await this.mailService.sendVeryfiedEmail(user.email, user.name, url);
   }
 
   async verifyEmail(token: string): Promise<void> {
