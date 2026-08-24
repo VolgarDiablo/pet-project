@@ -8,7 +8,6 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { Request } from 'express';
 import type { RequestWithUser } from './types/session-user.types';
 import { AuthService } from './auth.service';
 import { SignupEmailDto } from './dto/signup-email.dto';
@@ -21,12 +20,8 @@ export class AuthController {
 
   @Post('/signup')
   @HttpCode(201)
-  async signup(
-    @Body() signupEmailDto: SignupEmailDto,
-    @Req() req: Request,
-  ): Promise<void> {
-    const origin = req.headers.origin ?? 'http://localhost:3000';
-    return this.authService.signup(signupEmailDto, origin);
+  async signup(@Body() signupEmailDto: SignupEmailDto): Promise<void> {
+    return this.authService.signup(signupEmailDto);
   }
 
   @Get('/verify')
@@ -38,9 +33,8 @@ export class AuthController {
   }
 
   @Post('/login')
-  async login(@Body() loginDto: LoginDto, @Req() req: Request) {
-    const origin = req.headers.origin ?? 'http://localhost:3000';
-    return this.authService.login(loginDto, origin);
+  async login(@Body() loginDto: LoginDto) {
+    return this.authService.login(loginDto);
   }
 
   @Get('me')

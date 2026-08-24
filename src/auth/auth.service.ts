@@ -5,23 +5,22 @@ import {
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
-import { MailService } from '../mail/mail.service';
+import { EmailService } from '../mail/mail.service';
 import { SignupInterface } from './interfaces/signup.interface';
 import { TokenResponse } from './interfaces/token.interface';
 import { LoginInterface } from './interfaces/login.interface';
 import { generateToken, verifyToken } from './utils/jwt.util';
 import { hashPassword, comparePassword } from './utils/password.util';
-import { buildVerificationUrl } from './utils/verification-url.util';
 import { UsersDataService } from './users.data.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly usersData: UsersDataService,
-    private readonly mailService: MailService,
+    private readonly emailService: EmailService,
   ) {}
 
-  async signup(payload: SignupInterface, origin: string): Promise<void> {
+  async signup(payload: SignupInterface): Promise<void> {
     const { name, email, password, confirmPassword } = payload;
 
     const existingUser = await this.usersData.findByEmail(email);
@@ -42,18 +41,21 @@ export class AuthService {
       password: hash,
     });
 
-    await this.sendVerificationEmail(user, origin);
+    await this.sendVerificationEmail(user);
   }
 
-  private async sendVerificationEmail(
-    user: { id: number; email: string; name: string },
-    origin: string,
-  ) {
-    const tokenEmailVerify = generateToken({ id: user.id }, {
-      expiresIn: '15m',
+  private async sendVerificationEmail(user: {
+    id: number;
+    email: string;
+    name: string;
+  }) {
+    const token = generateToken({ id: user.id }, { expiresIn: '15m' });
+    await this.emailService.sendEmail({
+      type: 'verification',
+      to: user.email,
+      name: user.name,
+      token,
     });
-    const url = buildVerificationUrl(origin, tokenEmailVerify);
-    await this.mailService.sendVeryfiedEmail(user.email, user.name, url);
   }
 
   async verifyEmail(token: string): Promise<void> {
@@ -72,7 +74,7 @@ export class AuthService {
     await this.usersData.update(user.id, { emailVerified: true });
   }
 
-  async login(payload: LoginInterface, origin: string): Promise<TokenResponse> {
+  async login(payload: LoginInterface): Promise<TokenResponse> {
     const user = await this.usersData.findByEmail(payload.email);
 
     if (!user) {
@@ -89,7 +91,7 @@ export class AuthService {
     }
 
     if (!user.emailVerified) {
-      await this.sendVerificationEmail(user, origin);
+      await this.sendVerificationEmail(user);
     }
 
     const token = generateToken({ id: user.id }, { expiresIn: '10080m' });
