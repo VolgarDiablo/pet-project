@@ -30,31 +30,33 @@ model User {
 }
 
 model Category {
-  id       Int        @id @default(autoincrement())
-  name     String     @unique
-  slug     String     @unique
+  id   Int    @id @default(autoincrement())
+  name String @unique
+  slug String @unique
 
   products Product[]
 }
 
 model Product {
-  id            Int       @id @default(autoincrement())
+  id            Int      @id @default(autoincrement())
   title         String
-  slug          String    @unique
+  slug          String   @unique
   description   String?
-  brand         String?
-  price         Decimal   @db.Decimal(10, 2)
-  discountPrice Decimal?  @db.Decimal(10, 2)
+  price         Decimal  @db.Decimal(10, 2)
+  discountPrice Decimal? @db.Decimal(10, 2)
   stock         Int
 
-  isActive      Boolean   @default(true)
-  createdAt     DateTime  @default(now())
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
 
-  updatedAt     DateTime  @updatedAt
-  categoryId    Int?
-  category      Category? @relation(fields: [categoryId], references: [id])
+  updatedAt  DateTime    @updatedAt
+  categoryId Int?
+  category   Category?   @relation(fields: [categoryId], references: [id])
+  brandId    Int?
+  brand      Brand?      @relation(fields: [brandId], references: [id])
   cartItems  CartItem[]
   orderItems OrderItem[]
+  images     Image[]
 }
 
 model Cart {
@@ -101,4 +103,31 @@ model OrderItem {
   quantity   Int
   unitPrice  Decimal @db.Decimal(10, 2)
   totalPrice Decimal @db.Decimal(10, 2)
+}
+
+model Brand {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products Product[]
+  images   Image[]
+}
+
+model Image {
+  id        Int     @id @default(autoincrement())
+  url       String
+  alt       String?
+  sortOrder Int     @default(0)
+  isPrimary Boolean @default(false)
+
+  brandId   Int?
+  productId Int?
+  brand     Brand?   @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  product   Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
