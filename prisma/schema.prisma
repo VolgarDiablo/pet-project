@@ -35,6 +35,9 @@ model Category {
   slug String @unique
 
   products Product[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Product {
@@ -45,37 +48,42 @@ model Product {
   price         Decimal  @db.Decimal(10, 2)
   discountPrice Decimal? @db.Decimal(10, 2)
   stock         Int
+  isActive      Boolean  @default(true)
 
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-
-  updatedAt  DateTime    @updatedAt
   categoryId Int?
-  category   Category?   @relation(fields: [categoryId], references: [id])
   brandId    Int?
+  category   Category?   @relation(fields: [categoryId], references: [id])
   brand      Brand?      @relation(fields: [brandId], references: [id])
   cartItems  CartItem[]
   orderItems OrderItem[]
-  images     Image[]
+  images     Image?[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Cart {
-  id        Int      @id @default(autoincrement())
-  userId    Int      @unique
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id Int @id @default(autoincrement())
+
+  userId Int        @unique
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items  CartItem[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  items CartItem[]
 }
 
 model CartItem {
-  id        Int     @id @default(autoincrement())
+  id       Int @id @default(autoincrement())
+  quantity Int @default(1)
+
   cartId    Int
-  cart      Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
   productId Int
+  cart      Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
   product   Product @relation(fields: [productId], references: [id])
-  quantity  Int     @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([cartId, productId])
 }
@@ -88,32 +96,38 @@ model Order {
   totalAmount Decimal     @db.Decimal(10, 2)
   currency    String      @default("UAH")
   notes       String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
 
   items OrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model OrderItem {
   id         Int     @id @default(autoincrement())
-  orderId    Int
-  order      Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId  Int
-  product    Product @relation(fields: [productId], references: [id])
   quantity   Int
   unitPrice  Decimal @db.Decimal(10, 2)
   totalPrice Decimal @db.Decimal(10, 2)
+
+  orderId   Int
+  productId Int
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Brand {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique
+  id          Int     @id @default(autoincrement())
+  name        String  @unique
   description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 
   products Product[]
   images   Image[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Image {
