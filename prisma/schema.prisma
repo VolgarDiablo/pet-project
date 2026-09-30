@@ -6,13 +6,96 @@ datasource db {
   provider = "postgresql"
 }
 
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
 enum OrderStatus {
   PENDING
-  CONFIRMED
-  PROCESSING
+  COOKING
+  READY
   SHIPPED
   DELIVERED
   CANCELLED
+}
+
+enum SocialNetwork {
+  INSTAGRAM
+  FACEBOOK
+  TIKTOK
+}
+
+model Place {
+  id           Int           @id @default(autoincrement())
+  name         String
+  slug         String        @unique
+  wifiPassword String?
+  description  String?
+  address      String
+  addressUrl   String?
+  phone        String
+  email        String?
+  website      String?
+  openingHours OpeningHour[]
+  socials      PlaceSocial[]
+  menus        Menu[]
+  images       Image[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model OpeningHour {
+  id        Int       @id @default(autoincrement())
+  dayOfWeek DayOfWeek
+  openTime  String?
+  closeTime String?
+  isClosed  Boolean   @default(false)
+
+  placeId Int
+  place   Place @relation(fields: [placeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([placeId, dayOfWeek])
+}
+
+model PlaceSocial {
+  id   Int           @id @default(autoincrement())
+  type SocialNetwork
+  url  String
+
+  placeId Int
+  place   Place @relation(fields: [placeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([placeId, type])
+}
+
+model Menu {
+  id        Int     @id @default(autoincrement())
+  name      String
+  slug      String
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  placeId  Int
+  place    Place      @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  category Category[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([placeId, slug])
 }
 
 model User {
@@ -31,13 +114,18 @@ model User {
 
 model Category {
   id   Int    @id @default(autoincrement())
-  name String @unique
-  slug String @unique
+  name String
+  slug String
 
-  products Product[]
+  menuId Int
+  menu   Menu @relation(fields: [menuId], references: [id], onDelete: Cascade)
+
+  product Product[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([menuId, slug])
 }
 
 model Product {
@@ -54,9 +142,9 @@ model Product {
   brandId    Int?
   category   Category?   @relation(fields: [categoryId], references: [id])
   brand      Brand?      @relation(fields: [brandId], references: [id])
-  cartItems  CartItem[]
-  orderItems OrderItem[]
-  images     Image?[]
+  cartItem   CartItem[]
+  orderItem  OrderItem[]
+  image      Image[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -65,9 +153,10 @@ model Product {
 model Cart {
   id Int @id @default(autoincrement())
 
-  userId Int        @unique
-  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items  CartItem[]
+  userId    Int?       @unique
+  user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId String?    @unique
+  item      CartItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -90,14 +179,14 @@ model CartItem {
 
 model Order {
   id          Int         @id @default(autoincrement())
-  userId      Int?
-  user        User?       @relation(fields: [userId], references: [id])
   status      OrderStatus @default(PENDING)
   totalAmount Decimal     @db.Decimal(10, 2)
   currency    String      @default("UAH")
   notes       String?
 
-  items OrderItem[]
+  userId Int?
+  user   User?       @relation(fields: [userId], references: [id])
+  item   OrderItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -123,8 +212,8 @@ model Brand {
   name        String  @unique
   description String?
 
-  products Product[]
-  images   Image[]
+  product Product[]
+  image   Image[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -139,8 +228,10 @@ model Image {
 
   brandId   Int?
   productId Int?
+  placeId   Int?
   brand     Brand?   @relation(fields: [brandId], references: [id], onDelete: Cascade)
   product   Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+  place     Place?   @relation(fields: [placeId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

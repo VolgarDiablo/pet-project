@@ -102,13 +102,36 @@ const users = [
 ];
 
 async function main() {
+  console.log('Seeding place and menu...');
+  const place = await prisma.place.upsert({
+    where: { slug: 'main' },
+    update: {},
+    create: {
+      name: 'Main',
+      slug: 'main',
+      address: 'Kyiv',
+      phone: '+380000000000',
+    },
+  });
+
+  const menu = await prisma.menu.upsert({
+    where: { placeId_slug: { placeId: place.id, slug: 'kitchen' } },
+    update: {},
+    create: {
+      name: 'Кухня',
+      slug: 'kitchen',
+      placeId: place.id,
+    },
+  });
+
   console.log('Seeding categories...');
   const categoryByName = new Map<string, number>();
   for (const c of categories) {
+    const slug = slugify(c.name);
     const category = await prisma.category.upsert({
-      where: { name: c.name },
+      where: { menuId_slug: { menuId: menu.id, slug } },
       update: {},
-      create: { name: c.name, slug: slugify(c.name) },
+      create: { name: c.name, slug, menuId: menu.id },
     });
     categoryByName.set(c.name, category.id);
   }
@@ -120,23 +143,41 @@ async function main() {
       where: { slug },
       update: {
         title: p.title,
-        brand: p.brand,
         description: p.description,
         price: p.price,
         discountPrice: p.discountPrice,
         stock: p.stock,
         categoryId: categoryByName.get(p.category) ?? null,
         isActive: true,
+        ...(p.brand
+          ? {
+              brand: {
+                connectOrCreate: {
+                  where: { name: p.brand },
+                  create: { name: p.brand },
+                },
+              },
+            }
+          : {}),
       },
       create: {
         title: p.title,
         slug,
-        brand: p.brand,
         description: p.description,
         price: p.price,
         discountPrice: p.discountPrice,
         stock: p.stock,
         categoryId: categoryByName.get(p.category) ?? null,
+        ...(p.brand
+          ? {
+              brand: {
+                connectOrCreate: {
+                  where: { name: p.brand },
+                  create: { name: p.brand },
+                },
+              },
+            }
+          : {}),
       },
     });
   }
