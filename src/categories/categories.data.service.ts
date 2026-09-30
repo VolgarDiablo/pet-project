@@ -16,7 +16,7 @@ export class CategoriesDataService {
         skip,
         take,
         orderBy: { id: 'asc' },
-        include: { products: true },
+        include: { product: true },
       }),
       this.prisma.category.count(),
     ]);
@@ -26,9 +26,9 @@ export class CategoriesDataService {
     return this.prisma.category.findUnique({ where: { id } });
   }
 
-  async findIdBySlug(slug: string) {
-    return this.prisma.category.findUnique({
-      where: { slug },
+  async findIdBySlug(slug: string, menuId?: number) {
+    return this.prisma.category.findFirst({
+      where: { slug, ...(menuId !== undefined ? { menuId } : {}) },
       select: { id: true },
     });
   }
@@ -58,10 +58,14 @@ export class CategoriesDataService {
     ]);
   }
 
-  async create(name: string, slug: string): Promise<CategoryWithProducts> {
+  async create(
+    name: string,
+    slug: string,
+    menuId: number,
+  ): Promise<CategoryWithProducts> {
     return this.prisma.category.create({
-      data: { name, slug },
-      include: { products: true },
+      data: { name, slug, menuId },
+      include: { product: true },
     });
   }
 
@@ -72,7 +76,7 @@ export class CategoriesDataService {
     return this.prisma.category.update({
       where: { id },
       data,
-      include: { products: true },
+      include: { product: true },
     });
   }
 

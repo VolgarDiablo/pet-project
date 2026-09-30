@@ -3,7 +3,7 @@ import { PaginatedResult } from '../../common/interfaces/paginated-result.interf
 import { Pagination } from '../../common/interfaces/pagination.interface';
 
 export type CategoryWithProducts = Category & {
-  products: Product[];
+  product: Product[];
 };
 
 export interface CategoryWithPaginatedProducts extends Category {
@@ -17,10 +17,12 @@ export enum ProductSort {
 
 export interface CreateCategory {
   name: string;
+  menuId: number;
 }
 
 export interface UpdateCategory {
   name?: string;
+  menuId?: number;
 }
 
 export interface CategoryQuery extends Pagination {

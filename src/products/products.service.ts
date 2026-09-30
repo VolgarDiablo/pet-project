@@ -53,7 +53,9 @@ export class ProductsService {
       where.categoryId = query.categoryId;
     }
     if (query.brand) {
-      where.brand = { contains: query.brand, mode: 'insensitive' };
+      where.brand = {
+        name: { contains: query.brand, mode: 'insensitive' },
+      };
     }
     if (query.q) {
       where.title = { contains: query.q, mode: 'insensitive' };
@@ -96,7 +98,7 @@ export class ProductsService {
       title: payload.title,
       slug,
       description: payload.description,
-      brand: payload.brand,
+      brand: this.connectBrandByName(payload.brand),
       price: payload.price,
       discountPrice: payload.discountPrice,
       stock: payload.stock,
@@ -118,11 +120,16 @@ export class ProductsService {
 
     const data: Prisma.ProductUpdateInput = {
       description: payload.description,
-      brand: payload.brand,
       price: payload.price,
       discountPrice: payload.discountPrice,
       stock: payload.stock,
     };
+
+    if (payload.brand !== undefined) {
+      data.brand = this.connectBrandByName(payload.brand) ?? {
+        disconnect: true,
+      };
+    }
 
     if (payload.title !== undefined) {
       data.title = payload.title;
@@ -161,6 +168,20 @@ export class ProductsService {
       return { createdAt: 'desc' };
     }
     return { id: 'asc' };
+  }
+
+  private connectBrandByName(
+    name?: string,
+  ): Prisma.BrandCreateNestedOneWithoutProductInput | undefined {
+    if (!name) {
+      return undefined;
+    }
+    return {
+      connectOrCreate: {
+        where: { name },
+        create: { name },
+      },
+    };
   }
 
   private async ensureExists(id: number): Promise<void> {
