@@ -62,11 +62,15 @@ export class CategoriesService {
 
   async create(payload: CreateCategory): Promise<CategoryWithProducts> {
     const slug = await generateUniqueSlug(payload.name, (value) =>
-      this.slugExists(value),
+      this.slugExists(value, undefined, payload.menuId),
     );
 
     try {
-      return await this.categoriesData.create(payload.name, slug);
+      return await this.categoriesData.create(
+        payload.name,
+        slug,
+        payload.menuId,
+      );
     } catch (error) {
       throw this.handleWriteError(error, payload.name);
     }
@@ -76,13 +80,20 @@ export class CategoriesService {
     id: number,
     payload: UpdateCategory,
   ): Promise<CategoryWithProducts> {
-    await this.ensureExists(id);
+    const existing = await this.categoriesData.findById(id);
+    if (!existing) {
+      throw new NotFoundException(`Category ${id} not found`);
+    }
 
+    const menuId = payload.menuId ?? existing.menuId;
     const data: Prisma.CategoryUpdateInput = {};
+    if (payload.menuId !== undefined) {
+      data.menu = { connect: { id: payload.menuId } };
+    }
     if (payload.name !== undefined) {
       data.name = payload.name;
       data.slug = await generateUniqueSlug(payload.name, (value) =>
-        this.slugExists(value, id),
+        this.slugExists(value, id, menuId),
       );
     }
 
@@ -118,8 +129,12 @@ export class CategoriesService {
     }
   }
 
-  private async slugExists(slug: string, ignoreId?: number): Promise<boolean> {
-    const found = await this.categoriesData.findIdBySlug(slug);
+  private async slugExists(
+    slug: string,
+    ignoreId?: number,
+    menuId?: number,
+  ): Promise<boolean> {
+    const found = await this.categoriesData.findIdBySlug(slug, menuId);
     return !!found && found.id !== ignoreId;
   }
 

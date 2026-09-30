@@ -31,6 +31,20 @@ enum SocialNetwork {
   TIKTOK
 }
 
+model User {
+  id            Int      @id @default(autoincrement())
+  email         String   @unique
+  name          String
+  password      String
+  emailVerified Boolean  @default(false)
+  metaData      Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  cart   Cart?
+  orders Order[]
+}
+
 model Place {
   id           Int           @id @default(autoincrement())
   name         String
@@ -96,20 +110,6 @@ model Menu {
   updatedAt DateTime @updatedAt
 
   @@unique([placeId, slug])
-}
-
-model User {
-  id            Int      @id @default(autoincrement())
-  email         String   @unique
-  name          String
-  password      String
-  emailVerified Boolean  @default(false)
-  metaData      Json?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  cart   Cart?
-  orders Order[]
 }
 
 model Category {
