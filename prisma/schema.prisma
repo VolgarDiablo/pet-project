@@ -46,17 +46,18 @@ model User {
 }
 
 model Place {
-  id           Int           @id @default(autoincrement())
+  id           Int     @id @default(autoincrement())
   name         String
-  slug         String        @unique
+  slug         String  @unique
   wifiPassword String?
   description  String?
   address      String
   addressUrl   String?
-  phone        String
+  phone        String?
   email        String?
   website      String?
-  openingHours OpeningHour[]
+
+  workingHours WorkingHour[]
   socials      PlaceSocial[]
   menus        Menu[]
   images       Image[]
@@ -65,7 +66,7 @@ model Place {
   updatedAt DateTime @updatedAt
 }
 
-model OpeningHour {
+model WorkingHour {
   id        Int       @id @default(autoincrement())
   dayOfWeek DayOfWeek
   openTime  String?
@@ -140,11 +141,12 @@ model Product {
 
   categoryId Int?
   brandId    Int?
-  category   Category?   @relation(fields: [categoryId], references: [id])
-  brand      Brand?      @relation(fields: [brandId], references: [id])
-  cartItem   CartItem[]
-  orderItem  OrderItem[]
+  category   Category? @relation(fields: [categoryId], references: [id])
+  brand      Brand?    @relation(fields: [brandId], references: [id])
   image      Image[]
+
+  cartItem  CartItem[]
+  orderItem OrderItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

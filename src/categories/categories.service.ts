@@ -8,16 +8,13 @@ import { Pagination } from '../common/interfaces/pagination.interface';
 import { PaginatedResult } from '../common/interfaces/paginated-result.interface';
 import {
   CategoryQuery,
-  CategoryWithPaginatedProducts,
-  CategoryWithProducts,
+  CategoryWithPaginatedProduct,
+  CategoryWithProduct,
   CreateCategory,
   ProductSort,
   UpdateCategory,
 } from './interfaces/category.interface';
-import {
-  buildPaginatedResult,
-  getSkip,
-} from '../common/utils/pagination.util';
+import { buildPaginatedResult, getSkip } from '../common/utils/pagination.util';
 import { generateUniqueSlug } from '../common/utils/slug.util';
 import { CategoriesDataService } from './categories.data.service';
 
@@ -27,7 +24,7 @@ export class CategoriesService {
 
   async findAll(
     pagination: Pagination,
-  ): Promise<PaginatedResult<CategoryWithProducts>> {
+  ): Promise<PaginatedResult<CategoryWithProduct>> {
     const { page, limit } = pagination;
     const [data, total] = await this.categoriesData.find(
       getSkip(page, limit),
@@ -39,7 +36,7 @@ export class CategoriesService {
   async findOne(
     id: number,
     query: CategoryQuery,
-  ): Promise<CategoryWithPaginatedProducts> {
+  ): Promise<CategoryWithPaginatedProduct> {
     const { page, limit, sort } = query;
 
     const category = await this.categoriesData.findById(id);
@@ -47,7 +44,7 @@ export class CategoriesService {
       throw new NotFoundException(`Category ${id} not found`);
     }
 
-    const [products, total] = await this.categoriesData.findProductsByCategoryId(
+    const [product, total] = await this.categoriesData.findProductByCategoryId(
       id,
       getSkip(page, limit),
       limit,
@@ -56,11 +53,11 @@ export class CategoriesService {
 
     return {
       ...category,
-      products: buildPaginatedResult(products, total, page, limit),
+      product: buildPaginatedResult(product, total, page, limit),
     };
   }
 
-  async create(payload: CreateCategory): Promise<CategoryWithProducts> {
+  async create(payload: CreateCategory): Promise<CategoryWithProduct> {
     const slug = await generateUniqueSlug(payload.name, (value) =>
       this.slugExists(value, undefined, payload.menuId),
     );
@@ -79,7 +76,7 @@ export class CategoriesService {
   async update(
     id: number,
     payload: UpdateCategory,
-  ): Promise<CategoryWithProducts> {
+  ): Promise<CategoryWithProduct> {
     const existing = await this.categoriesData.findById(id);
     if (!existing) {
       throw new NotFoundException(`Category ${id} not found`);

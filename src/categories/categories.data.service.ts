@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { CategoryWithProducts } from './interfaces/category.interface';
+import { CategoryWithProduct } from './interfaces/category.interface';
 
 @Injectable()
 export class CategoriesDataService {
@@ -10,7 +10,7 @@ export class CategoriesDataService {
   async find(
     skip: number,
     take: number,
-  ): Promise<[CategoryWithProducts[], number]> {
+  ): Promise<[CategoryWithProduct[], number]> {
     return Promise.all([
       this.prisma.category.findMany({
         skip,
@@ -40,7 +40,7 @@ export class CategoriesDataService {
     });
   }
 
-  async findProductsByCategoryId(
+  async findProductByCategoryId(
     categoryId: number,
     skip: number,
     take: number,
@@ -62,7 +62,7 @@ export class CategoriesDataService {
     name: string,
     slug: string,
     menuId: number,
-  ): Promise<CategoryWithProducts> {
+  ): Promise<CategoryWithProduct> {
     return this.prisma.category.create({
       data: { name, slug, menuId },
       include: { product: true },
@@ -72,7 +72,7 @@ export class CategoriesDataService {
   async update(
     id: number,
     data: Prisma.CategoryUpdateInput,
-  ): Promise<CategoryWithProducts> {
+  ): Promise<CategoryWithProduct> {
     return this.prisma.category.update({
       where: { id },
       data,

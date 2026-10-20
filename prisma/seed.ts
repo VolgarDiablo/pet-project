@@ -27,7 +27,7 @@ type SeedProduct = {
   stock: number;
 };
 
-const products: SeedProduct[] = [
+const product: SeedProduct[] = [
   {
     title: 'Смартфон Galaxy S24',
     category: 'Электроника',
@@ -136,8 +136,8 @@ async function main() {
     categoryByName.set(c.name, category.id);
   }
 
-  console.log('Seeding products...');
-  for (const p of products) {
+  console.log('Seeding product...');
+  for (const p of product) {
     const slug = slugify(p.title);
     await prisma.product.upsert({
       where: { slug },

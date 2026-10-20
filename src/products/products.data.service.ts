@@ -4,7 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ProductWithCategory } from './interfaces/product.interface';
 
 @Injectable()
-export class ProductsDataService {
+export class ProductDataService {
   constructor(private readonly prisma: PrismaService) {}
 
   async find(
@@ -46,9 +46,7 @@ export class ProductsDataService {
     });
   }
 
-  async create(
-    data: Prisma.ProductCreateInput,
-  ): Promise<ProductWithCategory> {
+  async create(data: Prisma.ProductCreateInput): Promise<ProductWithCategory> {
     return this.prisma.product.create({
       data,
       include: { category: true },

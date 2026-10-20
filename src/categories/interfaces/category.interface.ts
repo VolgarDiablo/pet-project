@@ -2,12 +2,12 @@ import { Category, Product } from '@prisma/client';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
 import { Pagination } from '../../common/interfaces/pagination.interface';
 
-export type CategoryWithProducts = Category & {
+export type CategoryWithProduct = Category & {
   product: Product[];
 };
 
-export interface CategoryWithPaginatedProducts extends Category {
-  products: PaginatedResult<Product>;
+export interface CategoryWithPaginatedProduct extends Category {
+  product: PaginatedResult<Product>;
 }
 
 export enum ProductSort {

@@ -14,13 +14,13 @@ import {
 import { generateUniqueSlug } from '../common/utils/slug.util';
 import { PaginatedResult } from '../common/interfaces/paginated-result.interface';
 import { buildPaginatedResult, getSkip } from '../common/utils/pagination.util';
-import { ProductsDataService } from './products.data.service';
+import { ProductDataService } from './products.data.service';
 import { CategoriesDataService } from '../categories/categories.data.service';
 
 @Injectable()
 export class ProductsService {
   constructor(
-    private readonly productsData: ProductsDataService,
+    private readonly productData: ProductDataService,
     private readonly categoriesData: CategoriesDataService,
   ) {}
 
@@ -67,7 +67,7 @@ export class ProductsService {
       };
     }
 
-    const [data, total] = await this.productsData.find(
+    const [data, total] = await this.productData.find(
       where,
       getSkip(page, limit),
       limit,
@@ -78,7 +78,7 @@ export class ProductsService {
   }
 
   async findBySlug(slug: string): Promise<ProductWithCategory> {
-    const product = await this.productsData.findActiveBySlug(slug);
+    const product = await this.productData.findActiveBySlug(slug);
 
     if (!product) {
       throw new NotFoundException(`Product "${slug}" not found`);
@@ -94,7 +94,7 @@ export class ProductsService {
       this.slugExists(value),
     );
 
-    return this.productsData.create({
+    return this.productData.create({
       title: payload.title,
       slug,
       description: payload.description,
@@ -145,14 +145,12 @@ export class ProductsService {
           : { connect: { id: payload.categoryId } };
     }
 
-    return this.productsData.update(id, data);
+    return this.productData.update(id, data);
   }
 
-  async softDelete(
-    id: number,
-  ): Promise<{ id: number; isActive: boolean }> {
+  async softDelete(id: number): Promise<{ id: number; isActive: boolean }> {
     await this.ensureExists(id);
-    return this.productsData.softDelete(id);
+    return this.productData.softDelete(id);
   }
 
   private resolveOrder(
@@ -185,7 +183,7 @@ export class ProductsService {
   }
 
   private async ensureExists(id: number): Promise<void> {
-    const exists = await this.productsData.findIdOnly(id);
+    const exists = await this.productData.findIdOnly(id);
     if (!exists) {
       throw new NotFoundException(`Product ${id} not found`);
     }
@@ -204,7 +202,7 @@ export class ProductsService {
   }
 
   private async slugExists(slug: string, ignoreId?: number): Promise<boolean> {
-    const found = await this.productsData.findIdBySlug(slug);
+    const found = await this.productData.findIdBySlug(slug);
     return !!found && found.id !== ignoreId;
   }
 }
