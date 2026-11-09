@@ -139,6 +139,18 @@ async function main() {
   console.log('Seeding product...');
   for (const p of product) {
     const slug = slugify(p.title);
+    const categoryId = categoryByName.get(p.category) ?? null;
+    const brandConnect = p.brand
+      ? {
+          brand: {
+            connectOrCreate: {
+              where: { name: p.brand },
+              create: { name: p.brand },
+            },
+          },
+        }
+      : {};
+
     await prisma.product.upsert({
       where: { slug },
       update: {
@@ -147,18 +159,12 @@ async function main() {
         price: p.price,
         discountPrice: p.discountPrice,
         stock: p.stock,
-        categoryId: categoryByName.get(p.category) ?? null,
         isActive: true,
-        ...(p.brand
-          ? {
-              brand: {
-                connectOrCreate: {
-                  where: { name: p.brand },
-                  create: { name: p.brand },
-                },
-              },
-            }
-          : {}),
+        category:
+          categoryId === null
+            ? { disconnect: true }
+            : { connect: { id: categoryId } },
+        ...brandConnect,
       },
       create: {
         title: p.title,
@@ -167,17 +173,10 @@ async function main() {
         price: p.price,
         discountPrice: p.discountPrice,
         stock: p.stock,
-        categoryId: categoryByName.get(p.category) ?? null,
-        ...(p.brand
-          ? {
-              brand: {
-                connectOrCreate: {
-                  where: { name: p.brand },
-                  create: { name: p.brand },
-                },
-              },
-            }
+        ...(categoryId !== null
+          ? { category: { connect: { id: categoryId } } }
           : {}),
+        ...brandConnect,
       },
     });
   }

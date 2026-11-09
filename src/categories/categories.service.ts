@@ -16,20 +16,25 @@ import {
 } from './interfaces/category.interface';
 import { buildPaginatedResult, getSkip } from '../common/utils/pagination.util';
 import { generateUniqueSlug } from '../common/utils/slug.util';
-import { CategoriesDataService } from './categories.data.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class CategoriesService {
-  constructor(private readonly categoriesData: CategoriesDataService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async findAll(
     pagination: Pagination,
   ): Promise<PaginatedResult<CategoryWithProduct>> {
     const { page, limit } = pagination;
-    const [data, total] = await this.categoriesData.find(
-      getSkip(page, limit),
-      limit,
-    );
+    const [data, total] = await Promise.all([
+      this.prisma.category.findMany({
+        skip: getSkip(page, limit),
+        take: limit,
+        orderBy: { id: 'asc' },
+        include: { product: true },
+      }),
+      this.prisma.category.count(),
+    ]);
     return buildPaginatedResult(data, total, page, limit);
   }
 
@@ -39,17 +44,21 @@ export class CategoriesService {
   ): Promise<CategoryWithPaginatedProduct> {
     const { page, limit, sort } = query;
 
-    const category = await this.categoriesData.findById(id);
+    const category = await this.prisma.category.findUnique({ where: { id } });
     if (!category) {
       throw new NotFoundException(`Category ${id} not found`);
     }
 
-    const [product, total] = await this.categoriesData.findProductByCategoryId(
-      id,
-      getSkip(page, limit),
-      limit,
-      this.resolveProductOrder(sort),
-    );
+    const where = { categoryId: id };
+    const [product, total] = await Promise.all([
+      this.prisma.product.findMany({
+        where,
+        skip: getSkip(page, limit),
+        take: limit,
+        orderBy: this.resolveProductOrder(sort),
+      }),
+      this.prisma.product.count({ where }),
+    ]);
 
     return {
       ...category,
@@ -63,11 +72,14 @@ export class CategoriesService {
     );
 
     try {
-      return await this.categoriesData.create(
-        payload.name,
-        slug,
-        payload.menuId,
-      );
+      return await this.prisma.category.create({
+        data: {
+          name: payload.name,
+          slug,
+          menuId: payload.menuId,
+        },
+        include: { product: true },
+      });
     } catch (error) {
       throw this.handleWriteError(error, payload.name);
     }
@@ -77,7 +89,7 @@ export class CategoriesService {
     id: number,
     payload: UpdateCategory,
   ): Promise<CategoryWithProduct> {
-    const existing = await this.categoriesData.findById(id);
+    const existing = await this.prisma.category.findUnique({ where: { id } });
     if (!existing) {
       throw new NotFoundException(`Category ${id} not found`);
     }
@@ -95,7 +107,11 @@ export class CategoriesService {
     }
 
     try {
-      return await this.categoriesData.update(id, data);
+      return await this.prisma.category.update({
+        where: { id },
+        data,
+        include: { product: true },
+      });
     } catch (error) {
       throw this.handleWriteError(error, payload.name);
     }
@@ -103,8 +119,15 @@ export class CategoriesService {
 
   async remove(id: number): Promise<{ id: number; deleted: true }> {
     await this.ensureExists(id);
-    await this.categoriesData.delete(id);
+    await this.prisma.category.delete({ where: { id } });
     return { id, deleted: true };
+  }
+
+  findProductsByCategoryId(categoryId: number) {
+    return this.prisma.product.findMany({
+      where: { categoryId, isActive: true },
+      orderBy: { id: 'asc' },
+    });
   }
 
   private resolveProductOrder(
@@ -120,7 +143,10 @@ export class CategoriesService {
   }
 
   private async ensureExists(id: number): Promise<void> {
-    const exists = await this.categoriesData.findIdOnly(id);
+    const exists = await this.prisma.category.findUnique({
+      where: { id },
+      select: { id: true },
+    });
     if (!exists) {
       throw new NotFoundException(`Category ${id} not found`);
     }
@@ -131,7 +157,10 @@ export class CategoriesService {
     ignoreId?: number,
     menuId?: number,
   ): Promise<boolean> {
-    const found = await this.categoriesData.findIdBySlug(slug, menuId);
+    const found = await this.prisma.category.findFirst({
+      where: { slug, ...(menuId !== undefined ? { menuId } : {}) },
+      select: { id: true },
+    });
     return !!found && found.id !== ignoreId;
   }
 

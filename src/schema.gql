@@ -1,0 +1,163 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type Brand {
+  description: String
+  id: Int!
+  image: [Image!]!
+  name: String!
+}
+
+type Cart {
+  id: Int!
+  item: [CartItem!]!
+  userId: Int
+}
+
+type CartItem {
+  cartId: Int!
+  id: Int!
+  product: Product!
+  productId: Int!
+  quantity: Int!
+}
+
+type Category {
+  id: Int!
+  menuId: Int!
+  name: String!
+  product: [Product!]!
+  slug: String!
+}
+
+enum DayOfWeek {
+  FRIDAY
+  MONDAY
+  SATURDAY
+  SUNDAY
+  THURSDAY
+  TUESDAY
+  WEDNESDAY
+}
+
+type Image {
+  alt: String
+  id: Int!
+  isPrimary: Boolean!
+  sortOrder: Int!
+  url: String!
+}
+
+type Menu {
+  category: [Category!]!
+  id: Int!
+  isActive: Boolean!
+  name: String!
+  slug: String!
+  sortOrder: Int!
+}
+
+type Mutation {
+  addCartItem(productId: Int!, quantity: Int! = 1): Cart!
+  cancelOrder(id: Int!): Order!
+  clearCart: Cart!
+  createOrder(notes: String): Order!
+  updateCartItem(productId: Int!, quantity: Int!): Cart!
+}
+
+type Order {
+  currency: String!
+  id: Int!
+  item: [OrderItem!]!
+  notes: String
+  status: OrderStatus!
+  totalAmount: Float!
+  userId: Int
+}
+
+type OrderItem {
+  id: Int!
+  orderId: Int!
+  product: Product!
+  productId: Int!
+  quantity: Int!
+  totalPrice: Float!
+  unitPrice: Float!
+}
+
+enum OrderStatus {
+  CANCELLED
+  COOKING
+  DELIVERED
+  PENDING
+  READY
+  SHIPPED
+}
+
+type Place {
+  address: String!
+  addressUrl: String
+  description: String
+  email: String
+  id: Int!
+  image: [Image!]!
+  menus: [Menu!]!
+  name: String!
+  phone: String!
+  slug: String!
+  socials: [PlaceSocial!]!
+  website: String
+  wifiPassword: String
+  workingHours: [WorkingHour!]!
+}
+
+type PlaceSocial {
+  id: Int!
+  type: SocialNetwork!
+  url: String!
+}
+
+type Product {
+  brand: Brand
+  brandId: Int
+  description: String
+  discountPrice: Float
+  id: Int!
+  image: [Image!]!
+  isActive: Boolean!
+  price: Float!
+  slug: String!
+  stock: Int!
+  title: String!
+}
+
+type Query {
+  cart: Cart
+
+  """Проверка, что GraphQL поднялся."""
+  health: Boolean!
+  order(id: Int!): Order
+  orders: [Order!]!
+  place(slug: String!): Place
+  places: [Place!]!
+  product(slug: String!): Product
+}
+
+enum SocialNetwork {
+  FACEBOOK
+  INSTAGRAM
+  TIKTOK
+}
+
+type Subscription {
+  orderUpdated(id: Int!): Order!
+}
+
+type WorkingHour {
+  closeTime: String
+  dayOfWeek: DayOfWeek!
+  id: Int!
+  isClosed: Boolean!
+  openTime: String
+}

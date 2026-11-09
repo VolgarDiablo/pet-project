@@ -47,15 +47,15 @@ async addCartItem(...) {
 
 | Сущность | Resolver | Service (логика) | Статус |
 |----------|----------|------------------|--------|
-| Place | 2 query + 4 field | `PlacesService` — **файла нет**, только вызовы | resolver ok, service missing |
-| Menu | field `category` | `MenusService` из `./menus.services` — **файла нет**, typo имени | broken DI |
-| Category | field `product` | `CategoriesService.findProductsByCategoryId` — **метода нет** | broken |
-| Product | query + brand/image | методов `findProductBySlug` и т.д. **нет** | broken |
-| Brand | field image | `BrandsService` — **файла нет** | broken |
-| Cart | query + 3 mut + field `item` | stub [carts.service.ts](src/carts/carts.service.ts) | skeleton done |
-| CartItem | field `product` | stub в CartsService | skeleton done |
-| Order | 2 query + 2 mut + `orderUpdated` + field `item` | stub [orders.service.ts](src/orders/orders.service.ts) | skeleton done |
-| OrderItem | field `product` | stub в OrdersService | skeleton done |
+| Place | 2 query + 4 field | [places.service.ts](src/places/places.service.ts) | done |
+| Menu | field `category` | [menus.service.ts](src/menus/menus.service.ts) | done |
+| Category | field `product` | `findProductsByCategoryId` | done |
+| Product | query + brand/image | `findProductBySlug` / images / brand | done |
+| Brand | field image | [brands.service.ts](src/brands/brands.service.ts) | done |
+| Cart | query + 3 mut + field `item` | [carts.service.ts](src/carts/carts.service.ts) | done |
+| CartItem | field `product` | CartsService | done |
+| Order | 2 query + 2 mut + `orderUpdated` + field `item` | [orders.service.ts](src/orders/orders.service.ts) | done |
+| OrderItem | field `product` | OrdersService | done |
 
 Корневая схема (цель):  
 queries `health, place, places, product, cart, orders, order`  
@@ -66,18 +66,13 @@ PubSub: [pubsub.provider.ts](src/graphql/pubsub.provider.ts), подключён
 
 ---
 
-## 3. Известные ошибки / дыры (починить тебе)
+## 3. Известные ошибки / дыры
 
-1. **Нет файлов сервисов:** `places.service.ts`, `brands.service.ts`. Resolvers уже их импортируют → TS2307 / Nest DI fail.
-2. ~~Menus: `menus.services` + не в module~~ — fixed (`menus.service.ts` stub + providers).
-3. **PlacesModule / BrandsModule:** в `providers` только Resolver, без Service.
-4. **CategoriesService:** нет `findProductsByCategoryId` (data-service метод для product list по categoryId уже был раньше — пробросить).
-5. **ProductsService:** нет `findProductBySlug`, `findImagesByProductId`, `findBrandByProductId`.
-6. ~~ProductsModule / Controller: `ProductService` / `product.service`~~ — fixed → `ProductsService`.
-7. ~~Имена полей Product/Brand `images`→`image`, brand `[BrandModel]`→`BrandModel`~~ — fixed.
-8. ~~cookie-parser~~ — fixed.
-9. **Миграции:** на диске только 3 старых; Place/Menu/WorkingHour/guest cart в SQL могут отсутствовать → `migrate dev`.
-10. Prisma Place: `images` / `workingHours`; GQL Place: `image` / `workingHours` — маппинг в service/resolver уже через `name`.
+1. ~~Places/Brands/Menus/Categories/Products GQL methods~~ — fixed.
+2. ~~Carts/Orders stubs~~ — fixed (`cart_sid`, JWT optional, PubSub on create/cancel).
+3. ~~cookie-parser~~ — fixed.
+4. **Миграции:** на диске могут отставать → `npx prisma migrate dev` при необходимости.
+5. Эта итерация без `guestEmail` / `guestAccessToken` / LiqPay; `orders`/`order`/`cancelOrder` требуют JWT.
 
 ---
 
@@ -88,13 +83,4 @@ Cart: userId? + sessionId?; Order на текущих полях (без guestTo
 
 ---
 
-## 5. Stub-методы дописать в services
-
-**CartsService:** `findCart(req)`, `addCartItem`, `updateCartItem`, `clearCart`, `findItemsByCartId`, `findProductById`  
-**OrdersService:** `findOrders`, `findOrderById`, `createOrder`, `cancelOrder` (+ publish), `findItemsByOrderId`, `findProductById`
-
-Cookie `cart_sid` / JWT из `req` — внутри service, не в resolver.
-
----
-
-_После реализации services и migrate — обновить этот файл._
+_Снимок обновлён после реализации services._

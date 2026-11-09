@@ -14,15 +14,11 @@ import {
 import { generateUniqueSlug } from '../common/utils/slug.util';
 import { PaginatedResult } from '../common/interfaces/paginated-result.interface';
 import { buildPaginatedResult, getSkip } from '../common/utils/pagination.util';
-import { ProductDataService } from './products.data.service';
-import { CategoriesDataService } from '../categories/categories.data.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class ProductsService {
-  constructor(
-    private readonly productData: ProductDataService,
-    private readonly categoriesData: CategoriesDataService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async findAll(
     query: ProductQuery,
@@ -40,9 +36,10 @@ export class ProductsService {
     }
 
     if (hasSlug) {
-      const category = await this.categoriesData.findIdBySlug(
-        query.categorySlug!.trim(),
-      );
+      const category = await this.prisma.category.findFirst({
+        where: { slug: query.categorySlug!.trim() },
+        select: { id: true },
+      });
       if (!category) {
         throw new NotFoundException(
           `Category with slug "${query.categorySlug}" not found`,
@@ -67,24 +64,50 @@ export class ProductsService {
       };
     }
 
-    const [data, total] = await this.productData.find(
-      where,
-      getSkip(page, limit),
-      limit,
-      this.resolveOrder(query.sort),
-    );
+    const [data, total] = await Promise.all([
+      this.prisma.product.findMany({
+        where,
+        skip: getSkip(page, limit),
+        take: limit,
+        orderBy: this.resolveOrder(query.sort),
+        include: { category: true },
+      }),
+      this.prisma.product.count({ where }),
+    ]);
 
     return buildPaginatedResult(data, total, page, limit);
   }
 
   async findBySlug(slug: string): Promise<ProductWithCategory> {
-    const product = await this.productData.findActiveBySlug(slug);
+    const product = await this.findProductBySlug(slug);
 
     if (!product) {
       throw new NotFoundException(`Product "${slug}" not found`);
     }
 
     return product;
+  }
+
+  findProductBySlug(slug: string) {
+    return this.prisma.product.findFirst({
+      where: { slug, isActive: true },
+      include: { category: true },
+    });
+  }
+
+  findImagesByProductId(productId: number) {
+    return this.prisma.image.findMany({
+      where: { productId },
+      orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }],
+    });
+  }
+
+  async findBrandByProductId(productId: number) {
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { brand: true },
+    });
+    return product?.brand ?? null;
   }
 
   async create(payload: CreateProduct): Promise<ProductWithCategory> {
@@ -94,17 +117,20 @@ export class ProductsService {
       this.slugExists(value),
     );
 
-    return this.productData.create({
-      title: payload.title,
-      slug,
-      description: payload.description,
-      brand: this.connectBrandByName(payload.brand),
-      price: payload.price,
-      discountPrice: payload.discountPrice,
-      stock: payload.stock,
-      ...(payload.categoryId !== undefined
-        ? { category: { connect: { id: payload.categoryId } } }
-        : {}),
+    return this.prisma.product.create({
+      data: {
+        title: payload.title,
+        slug,
+        description: payload.description,
+        brand: this.connectBrandByName(payload.brand),
+        price: payload.price,
+        discountPrice: payload.discountPrice,
+        stock: payload.stock,
+        ...(payload.categoryId !== undefined
+          ? { category: { connect: { id: payload.categoryId } } }
+          : {}),
+      },
+      include: { category: true },
     });
   }
 
@@ -145,12 +171,20 @@ export class ProductsService {
           : { connect: { id: payload.categoryId } };
     }
 
-    return this.productData.update(id, data);
+    return this.prisma.product.update({
+      where: { id },
+      data,
+      include: { category: true },
+    });
   }
 
   async softDelete(id: number): Promise<{ id: number; isActive: boolean }> {
     await this.ensureExists(id);
-    return this.productData.softDelete(id);
+    return this.prisma.product.update({
+      where: { id },
+      data: { isActive: false },
+      select: { id: true, isActive: true },
+    });
   }
 
   private resolveOrder(
@@ -183,7 +217,10 @@ export class ProductsService {
   }
 
   private async ensureExists(id: number): Promise<void> {
-    const exists = await this.productData.findIdOnly(id);
+    const exists = await this.prisma.product.findUnique({
+      where: { id },
+      select: { id: true },
+    });
     if (!exists) {
       throw new NotFoundException(`Product ${id} not found`);
     }
@@ -195,14 +232,20 @@ export class ProductsService {
     if (categoryId === undefined || categoryId === null) {
       return;
     }
-    const category = await this.categoriesData.findIdOnly(categoryId);
+    const category = await this.prisma.category.findUnique({
+      where: { id: categoryId },
+      select: { id: true },
+    });
     if (!category) {
       throw new BadRequestException(`Category ${categoryId} does not exist`);
     }
   }
 
   private async slugExists(slug: string, ignoreId?: number): Promise<boolean> {
-    const found = await this.productData.findIdBySlug(slug);
+    const found = await this.prisma.product.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
     return !!found && found.id !== ignoreId;
   }
 }

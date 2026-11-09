@@ -10,7 +10,7 @@ import {
   Resolver,
   Subscription,
 } from '@nestjs/graphql';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import type { PubSub } from 'graphql-subscriptions';
 import { OrderModel } from './models/order.model';
 import { OrderItemModel } from './models/order-item.model';
@@ -40,9 +40,10 @@ export class OrderResolver {
   @Mutation(() => OrderModel, { name: 'createOrder' })
   async createOrder(
     @Context('req') req: Request,
+    @Context('res') res: Response,
     @Args('notes', { type: () => String, nullable: true }) notes?: string,
   ) {
-    return this.ordersService.createOrder(req, notes);
+    return this.ordersService.createOrder(req, res, notes);
   }
 
   @Mutation(() => OrderModel, { name: 'cancelOrder' })
