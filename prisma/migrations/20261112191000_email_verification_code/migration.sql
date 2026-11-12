@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "User" ADD COLUMN "emailCode" TEXT,
+ADD COLUMN "emailCodeExpiresAt" TIMESTAMP(3),
+ADD COLUMN "emailResendCount" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN "emailSentAt" TIMESTAMP(3);

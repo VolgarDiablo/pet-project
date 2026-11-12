@@ -31,12 +31,13 @@ export class EmailService {
           template: 'veryfied-email',
           context: {
             name: params.name,
+            code: params.code,
             veryfiedUrl: buildAppUrl(appUrl, '/auth/verify', {
-              token: params.token,
+              email: params.to,
             }),
           },
         };
-      };
+      }
     default:
       throw new Error('Invalid email type');
     }

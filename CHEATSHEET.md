@@ -1,9 +1,8 @@
 # Шпаргалка агента (не ТЗ)
 
-Снимок **20 Oct 2026**. Файл для продолжения чата, не публичная документация.  
+Снимок **12 Nov 2026**. Файл для продолжения чата, не публичная документация.  
 Продуктовое ТЗ: [docs/TZ.md](docs/TZ.md) (оплата онлайн: аккаунт и гость без аккаунта).
 
-Пользователь сам пишет **services**; resolver — тонкий скелет `return this.xxxService.method(...)`.  
 Prisma/схему не менять без просьбы. GraphQL **User не создавать**.
 
 ---
@@ -13,7 +12,7 @@ Prisma/схему не менять без просьбы. GraphQL **User не �
 - Auth = **REST**. GraphQL User нет.
 - Cart/Order в GQL: только `userId`, без вложенного User; `sessionId` не светить.
 - Родитель → дети через `@ResolveField`; имя метода ≠ имя поля → `{ name: '…' }`.
-- Не класть: `password`, `metaData`, `sessionId`.
+- Не отдавать: `password`, `metaData`, `sessionId`, (будущий) `isAdmin`.
 - `sendEmail` по `type`. `.env` не коммитить.
 - Не мержить `prisma/` и `src/prisma/`.
 
@@ -22,7 +21,8 @@ Prisma/схему не менять без просьбы. GraphQL **User не �
 ## 1. Стек / старт
 
 Nest 12 + Prisma 7 + GraphQL 14 / Apollo 5, code-first `src/schema.gql`, GraphiQL.  
-Пакеты subscription: `graphql-subscriptions`, `graphql-ws` (в graphql.module уже `subscriptions: { 'graphql-ws': true }`, context `req/res`).
+Пакеты subscription: `graphql-subscriptions`, `graphql-ws` (в graphql.module уже `subscriptions: { 'graphql-ws': true }`, context `req/res`).  
+Cookie: `cookie-parser` в [main.ts](src/main.ts).
 
 ```bash
 npm install && docker compose up -d
@@ -34,53 +34,74 @@ GraphQL: `/graphql`. REST: `/auth`, `/categories`, `/product`.
 
 ---
 
-## 2. GraphQL resolvers (скелет → service)
+## 2. Архитектура services
 
-Паттерн как Place:
+Один `*.service.ts` на модуль; **`*.data.service.ts` нет** — Prisma через `PrismaService` прямо в service.
 
-```ts
-@Mutation(() => CartModel, { name: 'addCartItem' })
-async addCartItem(...) {
-  return this.cartsService.addCartItem(req, productId, quantity);
-}
-```
+| Модуль | Service |
+|--------|---------|
+| places | [places.service.ts](src/places/places.service.ts) |
+| brands | [brands.service.ts](src/brands/brands.service.ts) |
+| menus | [menus.service.ts](src/menus/menus.service.ts) |
+| categories | [categories.service.ts](src/categories/categories.service.ts) |
+| products | [products.service.ts](src/products/products.service.ts) |
+| carts | [carts.service.ts](src/carts/carts.service.ts) |
+| orders | [orders.service.ts](src/orders/orders.service.ts) |
+| auth | [auth.service.ts](src/auth/auth.service.ts) |
 
-| Сущность | Resolver | Service (логика) | Статус |
-|----------|----------|------------------|--------|
-| Place | 2 query + 4 field | [places.service.ts](src/places/places.service.ts) | done |
-| Menu | field `category` | [menus.service.ts](src/menus/menus.service.ts) | done |
-| Category | field `product` | `findProductsByCategoryId` | done |
-| Product | query + brand/image | `findProductBySlug` / images / brand | done |
-| Brand | field image | [brands.service.ts](src/brands/brands.service.ts) | done |
-| Cart | query + 3 mut + field `item` | [carts.service.ts](src/carts/carts.service.ts) | done |
-| CartItem | field `product` | CartsService | done |
-| Order | 2 query + 2 mut + `orderUpdated` + field `item` | [orders.service.ts](src/orders/orders.service.ts) | done |
-| OrderItem | field `product` | OrdersService | done |
-
-Корневая схема (цель):  
-queries `health, place, places, product, cart, orders, order`  
-mutations `addCartItem, updateCartItem, clearCart, createOrder, cancelOrder`  
-subscription `orderUpdated(id)` — publish в сервисе: `pubSub.publish('orderUpdated', { orderUpdated: order })`.
-
-PubSub: [pubsub.provider.ts](src/graphql/pubsub.provider.ts), подключён в `OrdersModule`.
+Паттерн: тонкий resolver → `return this.xxxService.method(...)`.  
+REST и GQL делят один service где нужно (Product: REST `findBySlug` → throw 404; GQL `findProductBySlug` → `null`).
 
 ---
 
-## 3. Известные ошибки / дыры
+## 3. GraphQL покрытие (done)
 
-1. ~~Places/Brands/Menus/Categories/Products GQL methods~~ — fixed.
-2. ~~Carts/Orders stubs~~ — fixed (`cart_sid`, JWT optional, PubSub on create/cancel).
-3. ~~cookie-parser~~ — fixed.
-4. **Миграции:** на диске могут отставать → `npx prisma migrate dev` при необходимости.
-5. Эта итерация без `guestEmail` / `guestAccessToken` / LiqPay; `orders`/`order`/`cancelOrder` требуют JWT.
+| Сущность | Resolver | Service |
+|----------|----------|---------|
+| Place | 2 query + 4 field | PlacesService |
+| Menu | field `category` | MenusService |
+| Category | field `product` | `findProductsByCategoryId` |
+| Product | query + brand/image | `findProductBySlug` / images / brand |
+| Brand | field image | BrandsService |
+| Cart | query + 3 mut + field `item` | CartsService |
+| CartItem | field `product` | CartsService |
+| Order | 2 query + 2 mut + `orderUpdated` + field `item` | OrdersService |
+| OrderItem | field `product` | OrdersService |
+
+Корневая схема:
+- queries: `health, place, places, product, cart, orders, order`
+- mutations: `addCartItem, updateCartItem, clearCart, createOrder, cancelOrder`
+- subscription: `orderUpdated(id)` — publish: `pubSub.publish('orderUpdated', { orderUpdated: order })`
+
+**Cart:** cookie `cart_sid` (guest) или JWT → `userId`; при логине merge guest→user, `sessionId` очищается.  
+**Order:** `orders` / `order` / `cancelOrder` требуют JWT; `createOrder` допускает guest (`userId` null) **без** guestEmail/token.  
+PubSub: [pubsub.provider.ts](src/graphql/pubsub.provider.ts) в `OrdersModule`.
 
 ---
 
-## 4. Prisma кратко
+## 4. Auth / роли
+
+- **Было:** enum `Role` (`CUSTOMER` \| `MANAGER` \| `ADMIN`) + `User.role` → снято миграцией `20260805120000_remove_roles`.
+- **Сейчас:** только [JwtAuthGuard](src/auth/guards/jwt-auth.guard.ts) на REST write (product/category). В коде нет `Role` / `RolesGuard` / `isAdmin`.
+- **По TZ дальше:** флаг `User.isAdmin` (не полный RBAC manager/cook). Seed `admin@` / `manager@` — только email, не роли.
+
+---
+
+## 5. Prisma кратко
 
 Place → WorkingHour, PlaceSocial, Menu → Category → Product → Brand; Image XOR place/product/brand.  
-Cart: userId? + sessionId?; Order на текущих полях (без guestToken/LiqPay в этой итерации).
+Cart: `userId?` + `sessionId?` (якорь один). Order на текущих полях (без guestToken/LiqPay).
+
+Миграции в git: `init`, `add_catalog_and_roles`, `remove_roles`. Schema может опережать SQL в репо → при рассинхроне `migrate dev` / sync.
 
 ---
 
-_Снимок обновлён после реализации services._
+## 6. Дыры / next vs TZ
+
+1. Нет `User.isAdmin` → write каталога открыт любому JWT.
+2. Нет `guestEmail` / `guestPhone` / `guestAccessToken`, Payment, LiqPay, webhook.
+3. Нет `/admin/*` CMS (places, menus, order status, users).
+4. Нет писем оплаты / гостевого статуса заказа по token.
+5. Seed не выставляет админ-флаг (поля ещё нет).
+
+---

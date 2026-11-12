@@ -35,8 +35,13 @@ model User {
   id            Int      @id @default(autoincrement())
   email         String   @unique
   name          String
-  password      String
+  password      String?
+  googleId      String?  @unique
   emailVerified Boolean  @default(false)
+  emailCode     String?
+  emailCodeExpiresAt DateTime?
+  emailResendCount   Int       @default(0)
+  emailSentAt        DateTime?
   metaData      Json?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
